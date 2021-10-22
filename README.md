@@ -11,7 +11,7 @@ The traditional architecture for SETI algorithms (and for most astronomy) is lik
 
 The problem is that this is
 
-* Too slow - running a new algorithm on all our data takes months in theory, and in practice has been impossible on the largest datasets due to the accumulation of technical debt.
+* Too slow - running a new algorithm on all our data takes months in theory, and in practice has been impossible on the largest datasets.
 * Silencing false negatives - when our algorithm is missing a category of interesting signal, we just never see it. This also means we do not have real data sets on which to train ML techniques.
 
 The strategy behind PETI is to break this analysis down into stages.
