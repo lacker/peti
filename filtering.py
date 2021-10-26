@@ -9,7 +9,10 @@ import hdf5plugin
 import h5py
 
 import numpy as np
+import cupy as cp
 import sys
+
+xp = np
 
 assert __name__ == "__main__"
 
@@ -27,12 +30,12 @@ chunk_size = width // num_chunks
 total_col = 0
 
 for i in range(0, num_chunks):
-    array = data[:, 0, (i * chunk_size):((i+1) * chunk_size)]
+    array = xp.array(data[:, 0, (i * chunk_size):((i+1) * chunk_size)])
 
     # Blank out the exact middle, that's the DC spike
     array[:, chunk_size // 2] = 0
 
-    mean = np.mean(array)
+    mean = array.mean()
     factor = 2
     threshold = factor * mean
     high_pixel = (array > threshold).sum()
