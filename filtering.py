@@ -14,6 +14,20 @@ import sys
 
 xp = np
 
+def pretty_number(n):
+    powers_of_two = 0
+    rest = n
+    while rest % 2 == 0:
+        rest = rest // 2
+        powers_of_two += 1
+    if powers_of_two < 2:
+        return str(n)
+    power_part = f"2^{powers_of_two}"
+    if rest > 1:
+        return f"{rest}*{power_part}"
+    return power_part
+
+
 assert __name__ == "__main__"
 
 filename = sys.argv[1]
@@ -26,6 +40,7 @@ height, _, width = data.shape
 num_chunks = 64
 assert width % num_chunks == 0
 chunk_size = width // num_chunks
+print("chunk size:", pretty_number(chunk_size))
 
 total_col = 0
 total_sig = 0
