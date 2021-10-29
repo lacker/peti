@@ -55,7 +55,8 @@ for i in range(0, num_chunks):
     mean = array.mean()
     factor = 2
     threshold = factor * mean
-    high_pixel = (array > threshold).sum()
+    classic_mask = array > threshold
+    high_pixel = classic_mask.sum()
     colmax = array.max(axis=0)
     high_col = (colmax > threshold).sum()
 
@@ -70,14 +71,20 @@ for i in range(0, num_chunks):
     print(f"  {high_col} interesting columns")
 
     # Find local signal
-    signal = array.copy()
-    signal -= xp.roll(array, -1, axis=1)
-    signal -= xp.roll(array, 1, axis=1)
-    sig_pixel = (signal > 0).sum()
-    total_sig += sig_pixel
-    print(f"  {sig_pixel} pixels with signal, according to the local scan algorithm")
+    window_diff = array.copy()
+    window_diff -= xp.roll(array, -1, axis=1)
+    window_diff -= xp.roll(array, 1, axis=1)
+    window_mask = window_diff > 0
+    window_pixel = window_mask.sum()
+    total_window += window_pixel
+    print(f"  {window_pixel} interesting pixels, according to window scan")
+
+    # Where does classic find things that window does not
+    for x, y in xp.argwhere(classic_mask and not window_mask):
+        # TODO
+        pass
     
     
 print()
 print(f"{total_col} interesting columns in total")
-print(f"{total_sig} sig pixels in total")
+print(f"{total_window} sig pixels in total")
