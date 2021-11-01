@@ -76,13 +76,15 @@ for i in range(0, num_chunks):
     window_diff -= xp.roll(array, 1, axis=1)
     window_mask = window_diff > 0
     window_pixel = window_mask.sum()
-    total_window += window_pixel
     print(f"  {window_pixel} interesting pixels, according to window scan")
 
-    # Where does classic find things that window does not
-    for x, y in xp.argwhere(classic_mask and not window_mask):
-        # TODO
-        pass
+    # Calculate window-based SNR
+    sums = xp.cumsum(array, axis=1)
+
+    # Now what?
+    
+    total_window += window_pixel
+    
     
     
 print()
