@@ -28,65 +28,66 @@ def pretty_number(n):
     return power_part
 
 
-assert __name__ == "__main__"
+def process_file(filename):
+    assert h5py.is_hdf5(filename)
+    h5file = h5py.File(filename, "r")
 
-filename = sys.argv[1]
+    data = h5file["data"]
+    height, _, width = data.shape
+    num_chunks = 64
+    assert width % num_chunks == 0
+    chunk_size = width // num_chunks
+    print("chunk size:", pretty_number(chunk_size))
 
-assert h5py.is_hdf5(filename)
-h5file = h5py.File(filename, "r")
+    total_col = 0
+    total_sig = 0
 
-data = h5file["data"]
-height, _, width = data.shape
-num_chunks = 64
-assert width % num_chunks == 0
-chunk_size = width // num_chunks
-print("chunk size:", pretty_number(chunk_size))
+    for i in range(0, num_chunks):
+        array = xp.array(data[:, 0, (i * chunk_size):((i+1) * chunk_size)])
 
-total_col = 0
-total_sig = 0
+        # Blank out the exact middle, that's the DC spike
+        midpoint = chunk_size // 2
+        array[:, midpoint] = 0
 
-for i in range(0, num_chunks):
-    array = xp.array(data[:, 0, (i * chunk_size):((i+1) * chunk_size)])
+        mean = array.mean()
+        factor = 2
+        threshold = factor * mean
+        classic_mask = array > threshold
+        high_pixel = classic_mask.sum()
+        colmax = array.max(axis=0)
+        high_col = (colmax > threshold).sum()
 
-    # Blank out the exact middle, that's the DC spike
-    midpoint = chunk_size // 2
-    array[:, midpoint] = 0
+        total_col += high_col
 
-    mean = array.mean()
-    factor = 2
-    threshold = factor * mean
-    classic_mask = array > threshold
-    high_pixel = classic_mask.sum()
-    colmax = array.max(axis=0)
-    high_col = (colmax > threshold).sum()
+        if not high_pixel:
+            continue
 
-    total_col += high_col
+        print(f"chunk {i}")
+        print(f"  mean: {mean:.1f}")
+        print(f"  {high_pixel} interesting pixels, over {factor}x the mean")
+        print(f"  {high_col} interesting columns")
 
-    if not high_pixel:
-        continue
+        # Find local signal
+        window_diff = array.copy()
+        window_diff -= xp.roll(array, -1, axis=1)
+        window_diff -= xp.roll(array, 1, axis=1)
+        window_mask = window_diff > 0
+        window_pixel = window_mask.sum()
+        print(f"  {window_pixel} interesting pixels, according to window scan")
+
+        # Calculate window-based SNR
+        sums = xp.cumsum(array, axis=1)
+
+        # Now what?
+
+        total_window += window_pixel
+
+    print()
+    print(f"{total_col} interesting columns in total")
+    print(f"{total_window} sig pixels in total")
+
     
-    print(f"chunk {i}")
-    print(f"  mean: {mean:.1f}")
-    print(f"  {high_pixel} interesting pixels, over {factor}x the mean")
-    print(f"  {high_col} interesting columns")
+if __name__ == "__main__":
+    filename = sys.argv[1]
+    process_file(filename)
 
-    # Find local signal
-    window_diff = array.copy()
-    window_diff -= xp.roll(array, -1, axis=1)
-    window_diff -= xp.roll(array, 1, axis=1)
-    window_mask = window_diff > 0
-    window_pixel = window_mask.sum()
-    print(f"  {window_pixel} interesting pixels, according to window scan")
-
-    # Calculate window-based SNR
-    sums = xp.cumsum(array, axis=1)
-
-    # Now what?
-    
-    total_window += window_pixel
-    
-    
-    
-print()
-print(f"{total_col} interesting columns in total")
-print(f"{total_window} sig pixels in total")
