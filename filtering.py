@@ -28,6 +28,61 @@ def pretty_number(n):
     return power_part
 
 
+def apply_max_window(vector, window_size):
+    """
+    The output value of pixel i is the maximum value in the window whose first pixel is i, with a size of window_size.
+    This does not allocate new memory, it just overwrites the input vector.
+    Output size is the same as input size, so some windows will run off the end.
+    """
+    if window_size = 1:
+        return
+
+    # First we apply a subwindows, then we take the max of two of them.
+    # We need to round up on subwindow size, to be sure that two subwindows together
+    # can cover the original window.
+    subwindow_size = (window_size + 1) // 2
+    apply_max_window(vector, subwindow_size)
+
+    # shift is how much we need to shift one subwindow to combine two of them.
+    # shift is either the subwindow size, or one less if we are calculating an odd-size window
+    # and thus the two subwindows overlap a bit.
+    shift = window_size - subwindow_size
+
+    xp.maximum(vector[:-shift], vector[shift:], out=vector[:-shift])
+    
+
+def calculate_window_snr(array, window_size):
+    """
+    array is 2d, where the second dimension is the one we are windowing along.
+    The window SNR is calculated using three windows:
+    AAAAAABBBBBBCCCCCC
+    window_size is the size of each one of these three windows.
+    The SNR for the B window is the average of the B area, divided by the average of the A and C areas.
+    So this defines the SNR for a *window*.
+    The SNR for a *pixel* is the maximum SNR of any window containing it.
+
+    This returns an array of the same size as the input array. For edge pixels where we can't fit in a full window,
+    we just report a SNR of zero.
+    """
+    num_rows, num_cols = array.shape
+    array_size = num_rows * num_cols
+    vector = xp.reshape(array, (array_size,))
+
+    signal_kernel = [0] * window_size + [2] * window_size + [0] * window_size
+    noise_kernel = [1] * window_size + [0] * window_size + [1] * window_size
+    signal = xp.convolve(vector, signal_kernel, "valid")
+    noise = xp.convolve(vector, noise_kernel, "valid")
+
+    signal /= noise
+
+    # TODO: some sort of max-over-a-window calculation
+    # TODO: pad signal appropriately
+    # TODO: reshape it
+    # TODO: mask out the bad pixels
+    
+    raise RuntimeError("XXX")
+
+
 def process_file(filename):
     assert h5py.is_hdf5(filename)
     h5file = h5py.File(filename, "r")
@@ -40,8 +95,9 @@ def process_file(filename):
     print("chunk size:", pretty_number(chunk_size))
 
     total_col = 0
-    total_sig = 0
-
+    total_local = 0
+    total_window = 0
+    
     for i in range(0, num_chunks):
         array = xp.array(data[:, 0, (i * chunk_size):((i+1) * chunk_size)])
 
@@ -68,23 +124,26 @@ def process_file(filename):
         print(f"  {high_col} interesting columns")
 
         # Find local signal
-        window_diff = array.copy()
-        window_diff -= xp.roll(array, -1, axis=1)
-        window_diff -= xp.roll(array, 1, axis=1)
-        window_mask = window_diff > 0
-        window_pixel = window_mask.sum()
-        print(f"  {window_pixel} interesting pixels, according to window scan")
-
-        # Calculate window-based SNR
-        sums = xp.cumsum(array, axis=1)
+        local_diff = array.copy()
+        local_diff -= xp.roll(array, -1, axis=1)
+        local_diff -= xp.roll(array, 1, axis=1)
+        local_mask = local_diff > 0
+        local_pixel = local_mask.sum()
+        total_local += local_pixel
+        print(f"  {local_pixel} interesting pixels, according to local scan")
 
         # Now what?
-
+        window_snr = calculate_windows_snr(array, 1)
+        window_mask = window_snr > factor
+        window_pixel = window_mask.sum()
         total_window += window_pixel
+        print(f"  {window_pixel} interesting pixels, according to window snr")
 
+        
     print()
     print(f"{total_col} interesting columns in total")
-    print(f"{total_window} sig pixels in total")
+    print(f"{total_local} local pixels in total")
+    print(f"{total_window} window pixels in total")
 
     
 if __name__ == "__main__":
