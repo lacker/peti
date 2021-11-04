@@ -66,21 +66,35 @@ def calculate_window_snr(array, window_size):
     """
     num_rows, num_cols = array.shape
     array_size = num_rows * num_cols
-    vector = xp.reshape(array, (array_size,))
+    flattened = xp.reshape(array, (array_size,))
 
     signal_kernel = [0] * window_size + [2] * window_size + [0] * window_size
     noise_kernel = [1] * window_size + [0] * window_size + [1] * window_size
-    signal = xp.convolve(vector, signal_kernel, "valid")
-    noise = xp.convolve(vector, noise_kernel, "valid")
-
+    signal = xp.convolve(flattened, signal_kernel, "valid")
+    noise = xp.convolve(flattened, noise_kernel, "valid")
     signal /= noise
 
-    # TODO: some sort of max-over-a-window calculation
-    # TODO: pad signal appropriately
-    # TODO: reshape it
-    # TODO: mask out the bad pixels
+    # The length of the signal and noise arrays here is slightly smaller than the length of flattened:
+    #   (array_size - 3 * window_size + 1)
+    # The value at index i in the signal array reflects the signal of a window whose first pixel is at
+    # index (i + window_size) in the flattened array.
+    # We want to create an output array where that value is at index (i + window_size).
+    # The apply_max_window process will spread out values up to (window_size - 1) spots leftwards.
+    # So we pad flattened by (2 * window_size - 1) on the left. This leaves (window_size) padding on the right.
+    # Intuitively, the first and last window_size pixels we cannot get any SNR for, because there is no room to
+    # put the full noise window on one side of them.
+    flattened_output = xp.pad(signal, (2 * window_size - 1, window_size), "constant", constant_values=(0, 0))
     
-    raise RuntimeError("XXX")
+    # Give each pixel the best score from any window it belongs to
+    apply_max_window(flattened_output, window_size)
+    
+    output = xp.reshape(flattened_output, (num_rows, num_cols))
+    
+    # Since we did the convolutions in a flattened array, we have some signal values where we combined
+    # multiple rows. These values are basically garbage, so we just want to zero them out.
+    output[:, :window_size] = 0
+    output[:, -window_size:] = 0
+    return output
 
 
 def process_file(filename):
