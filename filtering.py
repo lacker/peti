@@ -34,7 +34,7 @@ def apply_max_window(vector, window_size):
     This does not allocate new memory, it just overwrites the input vector.
     Output size is the same as input size, so some windows will run off the end.
     """
-    if window_size = 1:
+    if window_size == 1:
         return
 
     # First we apply a subwindows, then we take the max of two of them.
