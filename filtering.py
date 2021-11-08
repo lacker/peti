@@ -147,11 +147,13 @@ def process_file(filename):
         print(f"  {local_pixel} interesting pixels, according to local scan")
 
         # Now what?
-        window_snr = calculate_windows_snr(array, 1)
+        window_snr = calculate_window_snr(array, 1)
         window_mask = window_snr > factor
         window_pixel = window_mask.sum()
         total_window += window_pixel
         print(f"  {window_pixel} interesting pixels, according to window snr")
+
+        assert local_pixel == window_pixel
 
         
     print()
