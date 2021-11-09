@@ -37,7 +37,7 @@ def apply_max_window(vector, window_size):
     if window_size == 1:
         return
 
-    # First we apply a subwindows, then we take the max of two of them.
+    # First we apply subwindows, then we take the max of two of them.
     # We need to round up on subwindow size, to be sure that two subwindows together
     # can cover the original window.
     subwindow_size = (window_size + 1) // 2
@@ -97,72 +97,50 @@ def calculate_window_snr(array, window_size):
     return output
 
 
-def process_file(filename):
-    assert h5py.is_hdf5(filename)
-    h5file = h5py.File(filename, "r")
+class File(object):
+    def __init__(self, filename):
+        assert h5py.is_hdf5(filename)
+        self.h5file = h5py.File(filename, "r")
+        self.data = self.h5file["data"]
+        self.height, _, self.width = self.data.shape
+        self.num_chunks = 64
+        assert self.width % self.num_chunks == 0
+        self.chunk_size = self.width // self.num_chunks
 
-    data = h5file["data"]
-    height, _, width = data.shape
-    num_chunks = 64
-    assert width % num_chunks == 0
-    chunk_size = width // num_chunks
-    print("chunk size:", pretty_number(chunk_size))
-
-    total_col = 0
-    total_local = 0
-    total_window = 0
-    
-    for i in range(0, num_chunks):
-        array = xp.array(data[:, 0, (i * chunk_size):((i+1) * chunk_size)])
+    def get_chunk(self, i):
+        assert 0 <= i < self.num_chunks
+        array = xp.array(self.data[:, 0, (i * self.chunk_size):((i+1) * self.chunk_size)])
 
         # Blank out the exact middle, that's the DC spike
-        midpoint = chunk_size // 2
-        array[:, midpoint] = 0
+        midpoint = self.chunk_size // 2
+        array[:, midpoint] = (array[:, midpoint - 1] + array[:, midpoint + 1]) / 2
 
-        mean = array.mean()
-        factor = 2
-        threshold = factor * mean
-        classic_mask = array > threshold
-        high_pixel = classic_mask.sum()
-        colmax = array.max(axis=0)
-        high_col = (colmax > threshold).sum()
-
-        total_col += high_col
-
-        if not high_pixel:
-            continue
-
-        print(f"chunk {i}")
-        print(f"  mean: {mean:.1f}")
-        print(f"  {high_pixel} interesting pixels, over {factor}x the mean")
-        print(f"  {high_col} interesting columns")
-
-        # Find local signal
-        local_diff = array.copy()
-        local_diff -= xp.roll(array, -1, axis=1)
-        local_diff -= xp.roll(array, 1, axis=1)
-        local_mask = local_diff > 0
-        local_pixel = local_mask.sum()
-        total_local += local_pixel
-        print(f"  {local_pixel} interesting pixels, according to local scan")
-
-        # Now what?
-        window_snr = calculate_window_snr(array, 1)
-        window_mask = window_snr > factor
-        window_pixel = window_mask.sum()
-        total_window += window_pixel
-        print(f"  {window_pixel} interesting pixels, according to window snr")
-
-        assert local_pixel == window_pixel
-
+        return array
         
-    print()
-    print(f"{total_col} interesting columns in total")
-    print(f"{total_local} local pixels in total")
-    print(f"{total_window} window pixels in total")
+    def process_array(self, array):
+        """
+        Returns a list of hits. A hit is a tuple:
+          (row, first_column, last_column)
+        so that the hit matches:
+          array[row, first_column : (last_column + 1)]
+        """
+        min_snr = 2
+        window_snr = calculate_window_snr(array, 1)
+        rows, cols = xp.where(window_snr > min_snr)
+        interesting_pixels = list(zip(rows, cols))
+        print(f"  {len(interesting_pixels)} interesting pixels")
+        return interesting_pixels
+
+
+    def process_all(self):
+        for i in range(self.num_chunks):
+            print(f"chunk {i}")
+            array = self.get_chunk(i)
+            print(self.process_array(array))
 
     
 if __name__ == "__main__":
     filename = sys.argv[1]
-    process_file(filename)
+    f = File(filename)
+    f.process_all()
 
