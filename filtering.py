@@ -14,20 +14,6 @@ import sys
 
 xp = np
 
-def pretty_number(n):
-    powers_of_two = 0
-    rest = n
-    while rest % 2 == 0:
-        rest = rest // 2
-        powers_of_two += 1
-    if powers_of_two < 2:
-        return str(n)
-    power_part = f"2^{powers_of_two}"
-    if rest > 1:
-        return f"{rest}*{power_part}"
-    return power_part
-
-
 def apply_max_window(vector, window_size):
     """
     The output value of pixel i is the maximum value in the window whose first pixel is i, with a size of window_size.
@@ -97,6 +83,33 @@ def calculate_window_snr(array, window_size):
     return output
 
 
+def find_hits(array):
+    """
+    Returns a list of hits. A hit is a horizontal sequence of adjacent pixels defined by a tuple:
+      (row, first_column, last_column)
+    so that the hit matches:
+      array[row, first_column : (last_column + 1)]
+    This "hit" tuple structure is used in other places too.
+    """
+    min_snr = 2
+    window_snr = calculate_window_snr(array, 1)
+    rows, cols = xp.where(window_snr > min_snr)
+
+    # Group pixel hits into adjacent sequences
+    hits = []
+    for row, col in sorted(zip(rows, cols)):
+        if hits:
+            prev_row, prev_first_column, prev_last_column = hits[-1]
+            if prev_row == row and prev_last_column + 1 == col:
+                # This pixel is an extension of the previous hit
+                hits[-1] = (prev_row, prev_first_column, col)
+                continue
+        # This pixel is the start of its own hit
+        hits.append((row, col, col))
+
+    return hits
+
+
 class File(object):
     def __init__(self, filename):
         assert h5py.is_hdf5(filename)
@@ -115,29 +128,93 @@ class File(object):
         midpoint = self.chunk_size // 2
         array[:, midpoint] = (array[:, midpoint - 1] + array[:, midpoint + 1]) / 2
 
-        return array
+        return array.view()
+
+    def process_chunk(self, chunk):
+        hits = find_hits(chunk)
+        groups = group_hits(chunk, hits, 10)
+        return groups
         
-    def process_array(self, array):
-        """
-        Returns a list of hits. A hit is a tuple:
-          (row, first_column, last_column)
-        so that the hit matches:
-          array[row, first_column : (last_column + 1)]
-        """
-        min_snr = 2
-        window_snr = calculate_window_snr(array, 1)
-        rows, cols = xp.where(window_snr > min_snr)
-        interesting_pixels = list(zip(rows, cols))
-        print(f"  {len(interesting_pixels)} interesting pixels")
-        return interesting_pixels
-
-
     def process_all(self):
+        total = 0
         for i in range(self.num_chunks):
-            print(f"chunk {i}")
-            array = self.get_chunk(i)
-            print(self.process_array(array))
+            chunk = self.get_chunk(i)
+            groups = self.process_chunk(chunk)
+            print(f"chunk {i} has {len(groups)} groups:")
+            print(" ", groups)
+            total += len(groups)
+        print(f"{total} hit groups total")
 
+
+def group_hits(data, hits, margin):
+    """
+    Return a list of HitGroup objects.
+    A hit is a (row, first_column, last_column) tuple.
+    When the number of empty columns between two groups is less than margin, they are combined into one hit group.
+    A margin of zero will combine only the hit groups with overlapping columns.
+    """
+    # sort by first_column
+    sorted_hits = sorted(hits, key=lambda hit: hit[1])
+
+    groups = []
+    pending_group = None
+    pending_last_column = None
+    for hit in sorted_hits:
+        _, first_column, last_column = hit
+        if pending_last_column is None:
+            # This is the first hit. Make a pending group
+            pending_group = [hit]
+            pending_last_column = last_column
+        elif pending_last_column + margin >= first_column:
+            # Combine this hit into the previous hit group
+            pending_group.append(hit)
+            pending_last_column = max(pending_last_column, last_column)
+        else:
+            # This hit goes into its own group
+            groups.append(HitGroup(data, pending_group))
+            pending_group = [hit]
+            pending_last_column = last_column
+
+    if pending_group is not None:
+        # Turn the last pending group into a full group
+        groups.append(HitGroup(data, pending_group))
+
+    return groups
+
+
+class HitGroup(object):
+    def __init__(self, data, hits):
+        """
+        data is a slice of the h5 file. indexes are relative to data.
+        hits is a list of hits.
+        """
+        self.data = data
+        self.hits = hits
+        self.first_column = min(first_column for _, first_column, _ in hits)
+        self.last_column = max(last_column for _, _, last_column in hits)
+
+    def __str__(self):
+        if len(self.hits) == 1:
+            row, col, _ = self.hits[0]
+            return f"blip({row}, {col})"
+
+        if self.first_column != self.last_column:
+            range_str = f"{self.first_column}-{self.last_column}"
+        else:
+            range_str = str(self.first_column)
+        return f"{len(self.hits)} hits @ {range_str}"
+
+    def __repr__(self):
+        return str(self)
+
+    def find_offset(self, width):
+        """
+        Finds an offset so that self.data[:, offset : offset + width] has this hit group centered.
+        """
+        center = (self.first_column + self.last_column) / 2
+        ideal_offset = center - (width - 1) / 2
+        return int(ideal_offset)
+    
     
 if __name__ == "__main__":
     filename = sys.argv[1]
