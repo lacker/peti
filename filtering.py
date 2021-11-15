@@ -15,32 +15,35 @@ import sys
 xp = np
 
 
-def calculate_window_mean(vector, window_size):
+def calculate_window_mean(array, window_size):
     """
-    The ith element of the output is the average of a size-i window starting at the ith element in vector.
-    Output is (window_size - 1) smaller than vector.
+    The ith column of the output is the average of a size-i window starting at the ith column and extending right.
+    Averages are by row.
+    Output is (window_size - 1) fewer columns than array.
     """
     assert window_size >= 1
-    sums = xp.cumsum(vector)
-    sums[window_size:] -= sums[:-window_size]
-    return sums[window_size-1:] / window_size
+    sums = xp.empty_like(array, dtype="float64")
+    xp.cumsum(array, axis=1, out=sums)
+    sums[:, window_size:] -= sums[:, :-window_size]
+    return sums[:, window_size-1:] / window_size
 
 
-def calculate_window_stats(vector, window_size):
+def calculate_window_stats(array, window_size):
     """
     Returns mean and standard deviation. Window sizing works just like calculate_window_mean.
-    This uses the "n" denominator rather than "n-1" for a variance estimator.
+    This is sample standard deviation so it uses the "n" denominator rather than "n-1" for an estimator.
     """
     assert window_size >= 2
     
+    # mean = E[X]
+    mean = calculate_window_mean(array, window_size)
+    # ex2 = E[X^2]
+    ex2 = calculate_window_mean(array * array, window_size)
     # Variance = E[X^2] - E[X]^2
-    mean = calculate_window_mean(vector, window_size)
-    ex2 = calculate_window_mean(vector * vector, window_size)
     variance = ex2 - (mean * mean)
-    std_dev = variance / window_size
+    std_dev = xp.sqrt(variance)
     return mean, std_dev
     
-
 
 def apply_max_window(vector, window_size):
     """
@@ -65,7 +68,26 @@ def apply_max_window(vector, window_size):
     xp.maximum(vector[:-shift], vector[shift:], out=vector[:-shift])
     
 
-def calculate_window_snr(array, window_size):
+def calculate_tailed_snr(array, window_size):
+    """
+    array is 2d, where the second dimension is the one we are windowing along.
+    """
+    window_means, window_devs = calculate_window_stats(array, window_size)
+
+    # left_snr is the snr calculated with noise using a window to the left
+    left_snr = xp.zeros_like(array)
+    left_snr[:, window_size:] = (array[:, window_size:] - window_means[:, :-1]) / window_devs[:, :-1]
+
+    # right_snr is the snr calculated with noise using a window to the right
+    right_snr = xp.zeros_like(array)
+    right_snr[:, :-window_size] = (array[:, :-window_size] - window_means[:, 1:]) / window_devs[:, 1:]
+
+    output = xp.maximum(left_snr, right_snr)
+    return output
+
+
+    
+def calculate_kernel_snr(array, window_size):
     """
     array is 2d, where the second dimension is the one we are windowing along.
     The window SNR is calculated using three windows:
@@ -111,7 +133,7 @@ def calculate_window_snr(array, window_size):
     return output
 
 
-def find_hits(array):
+def find_hits(array, snr_fn, window_size, min_snr):
     """
     Returns a list of hits. A hit is a horizontal sequence of adjacent pixels defined by a tuple:
       (row, first_column, last_column)
@@ -119,8 +141,7 @@ def find_hits(array):
       array[row, first_column : (last_column + 1)]
     This "hit" tuple structure is used in other places too.
     """
-    min_snr = 2
-    window_snr = calculate_window_snr(array, 1)
+    window_snr = snr_fn(array, window_size)
     rows, cols = xp.where(window_snr > min_snr)
 
     # Group pixel hits into adjacent sequences
@@ -158,8 +179,13 @@ class File(object):
 
         return array.view()
 
-    def process_chunk(self, chunk):
-        hits = find_hits(chunk)
+    def old_process_chunk(self, chunk):
+        hits = find_hits(chunk, calculate_kernel_snr, 1, 2)
+        groups = group_hits(chunk, hits, 10)
+        return groups
+    
+    def new_process_chunk(self, chunk):
+        hits = find_hits(chunk, calculate_tailed_snr, 30, 6)
         groups = group_hits(chunk, hits, 10)
         return groups
         
@@ -235,6 +261,9 @@ class HitGroup(object):
     def __repr__(self):
         return str(self)
 
+    def is_blip(self):
+        return len(self.hits) == 1
+    
     def find_offset(self, width):
         """
         Finds an offset so that self.data[:, offset : offset + width] has this hit group centered.
