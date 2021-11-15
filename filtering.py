@@ -14,6 +14,34 @@ import sys
 
 xp = np
 
+
+def calculate_window_mean(vector, window_size):
+    """
+    The ith element of the output is the average of a size-i window starting at the ith element in vector.
+    Output is (window_size - 1) smaller than vector.
+    """
+    assert window_size >= 1
+    sums = xp.cumsum(vector)
+    sums[window_size:] -= sums[:-window_size]
+    return sums[window_size-1:] / window_size
+
+
+def calculate_window_stats(vector, window_size):
+    """
+    Returns mean and standard deviation. Window sizing works just like calculate_window_mean.
+    This uses the "n" denominator rather than "n-1" for a variance estimator.
+    """
+    assert window_size >= 2
+    
+    # Variance = E[X^2] - E[X]^2
+    mean = calculate_window_mean(vector, window_size)
+    ex2 = calculate_window_mean(vector * vector, window_size)
+    variance = ex2 - (mean * mean)
+    std_dev = variance / window_size
+    return mean, std_dev
+    
+
+
 def apply_max_window(vector, window_size):
     """
     The output value of pixel i is the maximum value in the window whose first pixel is i, with a size of window_size.
@@ -214,6 +242,18 @@ class HitGroup(object):
         center = (self.first_column + self.last_column) / 2
         ideal_offset = center - (width - 1) / 2
         return int(ideal_offset)
+ 
+    def region(self):
+        """
+        A normalized region around this hit.
+        """
+        width = 80
+        offset = self.find_offset(width)
+        region = self.data[:, offset:offset+width]
+        rmin = region.min()
+        rmax = region.max()
+        normal = (region - rmin) / (rmax - rmin)
+        return normal
     
     
 if __name__ == "__main__":
