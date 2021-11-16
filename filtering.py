@@ -85,54 +85,7 @@ def calculate_tailed_snr(array, window_size):
     output = xp.maximum(left_snr, right_snr)
     return output
 
-
     
-def calculate_kernel_snr(array, window_size):
-    """
-    array is 2d, where the second dimension is the one we are windowing along.
-    The window SNR is calculated using three windows:
-    AAAAAABBBBBBCCCCCC
-    window_size is the size of each one of these three windows.
-    The SNR for the B window is the average of the B area, divided by the average of the A and C areas.
-    So this defines the SNR for a *window*.
-    The SNR for a *pixel* is the maximum SNR of any window containing it.
-
-    This returns an array of the same size as the input array. For edge pixels where we can't fit in a full window,
-    we just report a SNR of zero.
-    """
-    num_rows, num_cols = array.shape
-    array_size = num_rows * num_cols
-    flattened = xp.reshape(array, (array_size,))
-
-    signal_kernel = [0] * window_size + [2] * window_size + [0] * window_size
-    noise_kernel = [1] * window_size + [0] * window_size + [1] * window_size
-    signal = xp.convolve(flattened, signal_kernel, "valid")
-    noise = xp.convolve(flattened, noise_kernel, "valid")
-    signal /= noise
-
-    # The length of the signal and noise arrays here is slightly smaller than the length of flattened:
-    #   (array_size - 3 * window_size + 1)
-    # The value at index i in the signal array reflects the signal of a window whose first pixel is at
-    # index (i + window_size) in the flattened array.
-    # We want to create an output array where that value is at index (i + window_size).
-    # The apply_max_window process will spread out values up to (window_size - 1) spots leftwards.
-    # So we pad flattened by (2 * window_size - 1) on the left. This leaves (window_size) padding on the right.
-    # Intuitively, the first and last window_size pixels we cannot get any SNR for, because there is no room to
-    # put the full noise window on one side of them.
-    flattened_output = xp.pad(signal, (2 * window_size - 1, window_size), "constant", constant_values=(0, 0))
-    
-    # Give each pixel the best score from any window it belongs to
-    apply_max_window(flattened_output, window_size)
-    
-    output = xp.reshape(flattened_output, (num_rows, num_cols))
-    
-    # Since we did the convolutions in a flattened array, we have some signal values where we combined
-    # multiple rows. These values are basically garbage, so we just want to zero them out.
-    output[:, :window_size] = 0
-    output[:, -window_size:] = 0
-    return output
-
-
 def find_hits(array, snr_fn, window_size, min_snr):
     """
     Returns a list of hits. A hit is a horizontal sequence of adjacent pixels defined by a tuple:
@@ -179,15 +132,10 @@ class File(object):
 
         return array.view()
 
-    def old_process_chunk(self, chunk):
-        hits = find_hits(chunk, calculate_kernel_snr, 1, 2)
-        groups = group_hits(chunk, hits, 10)
-        return groups
-    
-    def new_process_chunk(self, chunk):
+    def process_chunk(self, chunk):
         hits = find_hits(chunk, calculate_tailed_snr, 30, 6)
         groups = group_hits(chunk, hits, 10)
-        return groups
+        return [g for g in groups if not g.is_blip()]
         
     def process_all(self):
         total = 0
@@ -283,6 +231,19 @@ class HitGroup(object):
         rmax = region.max()
         normal = (region - rmin) / (rmax - rmin)
         return normal
+
+    def overlaps(self, other):
+        if self.last_column < other.first_column:
+            return False
+        if other.last_column < self.first_column:
+            return False
+        return True
+
+    def overlaps_list(self, other_list):
+        for other in other_list:
+            if self.overlaps(other):
+                return True
+        return False
     
     
 if __name__ == "__main__":
