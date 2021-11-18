@@ -72,55 +72,58 @@ def apply_max_window(vector, window_size):
     xp.maximum(vector[:-shift], vector[shift:], out=vector[:-shift])
     
 
-def calculate_pixel_snr(array, window_size):
-    """
-    pixel snr is the signal of a particular pixel, compared to the "noise" as defined by
-    a window either to the left or the right of the pixel.
-    window_size is the size of the window to use for noise.
-    array is 2d, where the second dimension is the one we are windowing along.
-    snr is the number of standard deviations from the mean it would be, using the noise population
-    to define mean and standard deviation.
-    The snr of a pixel is the higher of its left and right snr.
-    """
-    window_means, window_devs = calculate_window_stats(array, window_size)
+class WindowCalculator(object):
+    def __init__(self, array, window_size):
+        """
+        window_size is the size of the window to use for noise.
+        array is 2d, where the second dimension is the one we are windowing along.
+        """
+        self.array = array
+        self.window_size = window_size
+        self.means, self.devs = calculate_window_stats(array, window_size)
 
-    # left_snr is the snr calculated with noise using a window to the left
-    left_snr = xp.zeros_like(array)
-    left_snr[:, window_size:] = (array[:, window_size:] - window_means[:, :-1]) / window_devs[:, :-1]
+    def pixel_snr(self):        
+        """
+        pixel snr is the signal of a particular pixel, compared to the "noise" as defined by
+        a window either to the left or the right of the pixel.
+        snr is the number of standard deviations from the mean it would be, using the noise population
+        to define mean and standard deviation.
+        The snr of a pixel is the higher of its left and right snr.
+        """
+        # left_snr is the snr calculated with noise using a window to the left
+        left_snr = xp.zeros_like(self.array)
+        left_snr[:, self.window_size:] = (self.array[:, self.window_size:] - self.means[:, :-1]) / self.devs[:, :-1]
 
-    # right_snr is the snr calculated with noise using a window to the right
-    right_snr = xp.zeros_like(array)
-    right_snr[:, :-window_size] = (array[:, :-window_size] - window_means[:, 1:]) / window_devs[:, 1:]
+        # right_snr is the snr calculated with noise using a window to the right
+        right_snr = xp.zeros_like(self.array)
+        right_snr[:, :-self.window_size] = (self.array[:, :-self.window_size] - self.means[:, 1:]) / self.devs[:, 1:]
 
-    output = xp.maximum(left_snr, right_snr)
-    return output
+        output = xp.maximum(left_snr, right_snr)
+        return output
 
+    def two_pixel_snr(self):
+        """
+        two-pixel snr is like pixel snr, except we calculate the signal as the average over two consecutive pixels.
+        """
+        # First, in spot i we calculate signal for the pixel pair indexed with (i, i+1).
+        # signal is thus one column shorter than array.
+        signal = (self.array[:, :-1] + self.array[:, 1:]) / 2
 
-def calculate_two_pixel_snr(array, window_size):
-    """
-    two-pixel snr is like pixel snr, except we calculate the signal as the average over two consecutive pixels.
-    """
-    window_means, window_devs = calculate_window_stats(array, window_size)
+        # left_snr is the snr for the pixel pair indexed with (i, i+1) calculated with a noise window to the left.
+        # thus the first window_size columns, and the last column, are zeros.
+        left_snr = xp.zeros_like(self.array)
+        left_snr[:, self.window_size:-1] = (signal[:, self.window_size:] - self.means[:, :-2]) / self.devs[:, :-2]
 
-    # First, in spot i we calculate signal for the pixel pair indexed with (i, i+1).
-    # signal is thus one column shorter than array.
-    signal = (array[:, :-1] + array[:, 1:]) / 2
+        # right_snr is the snr for the pixel pair indexed with (i, i+1) calculated with a noise window to the right.
+        # thus the last (window_size+1) columns are zeros.
+        right_snr = xp.zeros_like(self.array)
+        right_snr[:, :-(self.window_size+1)] = (signal[:, :-self.window_size] - self.means[:, 2:]) / self.devs[:, 2:]
 
-    # left_snr is the snr for the pixel pair indexed with (i, i+1) calculated with a noise window to the left.
-    # thus the first window_size columns, and the last column, are zeros.
-    left_snr = xp.zeros_like(array)
-    left_snr[:, window_size:-1] = (signal[:, window_size:] - window_means[:, :-2]) / window_devs[:, :-2]
-
-    # right_snr is the snr for the pixel pair indexed with (i, i+1) calculated with a noise window to the right.
-    # thus the last (window_size+1) columns are zeros.
-    right_snr = xp.zeros_like(array)
-    right_snr[:, :-(window_size+1)] = (signal[:, :-window_size] - window_means[:, 2:]) / window_devs[:, 2:]
-
-    # Each pixel has four ways to get its best score: as the left or right member of the pair, and with a left or
-    # right window.
-    output = xp.maximum(left_snr, right_snr)
-    xp.maximum(output[:, :-1], output[:, 1:], out=output[:, 1:])
-    return output
+        # Each pixel has four ways to get its best score: as the left or right member of the pair, and with a left or
+        # right window.
+        output = xp.maximum(left_snr, right_snr)
+        xp.maximum(output[:, :-1], output[:, 1:], out=output[:, 1:])
+        return output
 
     
 def find_hits(mask):
@@ -169,17 +172,15 @@ class File(object):
 
         return array.view()
 
-    def find_groups(self, chunk, new=False):
-        pixel_snr = calculate_pixel_snr(chunk, 30)
-        mask = pixel_snr > 6
-
-        if new:
-            window_snr = calculate_two_pixel_snr(chunk, 30)
-            mask |= window_snr > 4
+    def find_groups(self, chunk):
+        calc = WindowCalculator(chunk, 30)
+        pixel_snr = calc.pixel_snr()
+        two_pixel_snr = calc.two_pixel_snr()
+        mask = (pixel_snr > 6) | (two_pixel_snr > 4)
 
         hits = find_hits(mask)            
         groups = group_hits(chunk, hits, 10)
-        return [g for g in groups if not g.is_blip()]
+        return [g for g in groups if len(g) > 1]
         
     def process_all(self):
         total = 0
@@ -253,6 +254,9 @@ class HitGroup(object):
     def __repr__(self):
         return str(self)
 
+    def __len__(self):
+        return len(self.hits)
+    
     def is_blip(self):
         """
         A "blip" is any signal that only occurs at one point in time.
