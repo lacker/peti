@@ -10,14 +10,60 @@ import h5py
 
 import numpy as np
 import cupy as cp
+
+import os
+import random
 import sys
 
 xp = np
 
-
 # Standard image width to display
 WIDTH = 60
 
+# This directory
+DIR = os.path.dirname(os.path.realpath(__file__))
+
+class File(object):
+    def __init__(self, filename):
+        assert h5py.is_hdf5(filename)
+        self.h5file = h5py.File(filename, "r")
+        self.data = self.h5file["data"]
+        self.height, _, self.width = self.data.shape
+        self.num_chunks = 64
+        assert self.width % self.num_chunks == 0
+        self.chunk_size = self.width // self.num_chunks
+
+    def get_chunk(self, i):
+        assert 0 <= i < self.num_chunks
+        array = xp.array(self.data[:, 0, (i * self.chunk_size):((i+1) * self.chunk_size)])
+
+        # Blur out the exact middle, that's the DC spike
+        midpoint = self.chunk_size // 2
+        array[:, midpoint] = (array[:, midpoint - 1] + array[:, midpoint + 1]) / 2
+
+        return array.view()
+
+
+class ChunkFetcher(object):
+    def __init__(self, seed=None):
+        if seed is None:
+            self.seed = random.randint(1000, 10000)
+        else:
+            self.seed = seed
+        print("seed:", self.seed)
+        self.rng = random.Random(self.seed)
+
+        # Get a list of possible files to open
+        lines = [line.strip() for line in open(os.path.join(DIR, "input.txt"))]
+        self.filenames = [line for line in lines if line.endswith("h5")]
+
+    def fetch(self):
+        """
+        Returns a (filename, chunk number, chunk) tuple.
+        """
+        TODO
+
+        
 def calculate_window_mean(array, window_size):
     """
     The ith column of the output is the average of a size-i window starting at the ith column and extending right.
@@ -152,83 +198,6 @@ def find_hits(mask):
     return hits
 
 
-class File(object):
-    def __init__(self, filename):
-        assert h5py.is_hdf5(filename)
-        self.h5file = h5py.File(filename, "r")
-        self.data = self.h5file["data"]
-        self.height, _, self.width = self.data.shape
-        self.num_chunks = 64
-        assert self.width % self.num_chunks == 0
-        self.chunk_size = self.width // self.num_chunks
-
-    def get_chunk(self, i):
-        assert 0 <= i < self.num_chunks
-        array = xp.array(self.data[:, 0, (i * self.chunk_size):((i+1) * self.chunk_size)])
-
-        # Blur out the exact middle, that's the DC spike
-        midpoint = self.chunk_size // 2
-        array[:, midpoint] = (array[:, midpoint - 1] + array[:, midpoint + 1]) / 2
-
-        return array.view()
-
-    def find_groups(self, chunk):
-        calc = WindowCalculator(chunk, 30)
-        pixel_snr = calc.pixel_snr()
-        two_pixel_snr = calc.two_pixel_snr()
-        mask = (pixel_snr > 6) | (two_pixel_snr > 4)
-
-        hits = find_hits(mask)            
-        groups = group_hits(chunk, hits, 10)
-        return [g for g in groups if len(g) > 1]
-        
-    def process_all(self):
-        total = 0
-        for i in range(self.num_chunks):
-            chunk = self.get_chunk(i)
-            groups = self.find_groups(chunk)
-            print(f"chunk {i} has {len(groups)} groups:")
-            print(" ", groups)
-            total += len(groups)
-        print(f"{total} hit groups total")
-
-
-def group_hits(data, hits, margin):
-    """
-    Return a list of HitGroup objects.
-    A hit is a (row, first_column, last_column) tuple.
-    When the number of empty columns between two groups is less than margin, they are combined into one hit group.
-    A margin of zero will combine only the hit groups with overlapping columns.
-    """
-    # sort by first_column
-    sorted_hits = sorted(hits, key=lambda hit: hit[1])
-
-    groups = []
-    pending_group = None
-    pending_last_column = None
-    for hit in sorted_hits:
-        _, first_column, last_column = hit
-        if pending_last_column is None:
-            # This is the first hit. Make a pending group
-            pending_group = [hit]
-            pending_last_column = last_column
-        elif pending_last_column + margin >= first_column:
-            # Combine this hit into the previous hit group
-            pending_group.append(hit)
-            pending_last_column = max(pending_last_column, last_column)
-        else:
-            # This hit goes into its own group
-            groups.append(HitGroup(data, pending_group))
-            pending_group = [hit]
-            pending_last_column = last_column
-
-    if pending_group is not None:
-        # Turn the last pending group into a full group
-        groups.append(HitGroup(data, pending_group))
-
-    return groups
-
-
 class HitGroup(object):
     def __init__(self, data, hits):
         """
@@ -305,6 +274,53 @@ class HitGroup(object):
                 return True
         return False
 
+    
+def find_groups(chunk):
+    calc = WindowCalculator(chunk, 30)
+    pixel_snr = calc.pixel_snr()
+    two_pixel_snr = calc.two_pixel_snr()
+    mask = (pixel_snr > 6) | (two_pixel_snr > 4)
+
+    hits = find_hits(mask)            
+    groups = group_hits(chunk, hits, 10)
+    return [g for g in groups if len(g) > 1]
+        
+
+def group_hits(data, hits, margin):
+    """
+    Return a list of HitGroup objects.
+    A hit is a (row, first_column, last_column) tuple.
+    When the number of empty columns between two groups is less than margin, they are combined into one hit group.
+    A margin of zero will combine only the hit groups with overlapping columns.
+    """
+    # sort by first_column
+    sorted_hits = sorted(hits, key=lambda hit: hit[1])
+
+    groups = []
+    pending_group = None
+    pending_last_column = None
+    for hit in sorted_hits:
+        _, first_column, last_column = hit
+        if pending_last_column is None:
+            # This is the first hit. Make a pending group
+            pending_group = [hit]
+            pending_last_column = last_column
+        elif pending_last_column + margin >= first_column:
+            # Combine this hit into the previous hit group
+            pending_group.append(hit)
+            pending_last_column = max(pending_last_column, last_column)
+        else:
+            # This hit goes into its own group
+            groups.append(HitGroup(data, pending_group))
+            pending_group = [hit]
+            pending_last_column = last_column
+
+    if pending_group is not None:
+        # Turn the last pending group into a full group
+        groups.append(HitGroup(data, pending_group))
+
+    return groups
+    
     
 def diff(list1, list2):
     """
