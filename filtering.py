@@ -61,7 +61,11 @@ class ChunkFetcher(object):
         """
         Returns a (filename, chunk number, chunk) tuple.
         """
-        TODO
+        filename = self.rng.choice(self.filenames)
+        f = File(filename)
+        i = self.rng.randrange(f.num_chunks)
+        chunk = f.get_chunk(i)
+        return (filename, i, chunk)
 
         
 def calculate_window_mean(array, window_size):
@@ -275,17 +279,6 @@ class HitGroup(object):
         return False
 
     
-def find_groups(chunk):
-    calc = WindowCalculator(chunk, 30)
-    pixel_snr = calc.pixel_snr()
-    two_pixel_snr = calc.two_pixel_snr()
-    mask = (pixel_snr > 6) | (two_pixel_snr > 4)
-
-    hits = find_hits(mask)            
-    groups = group_hits(chunk, hits, 10)
-    return [g for g in groups if len(g) > 1]
-        
-
 def group_hits(data, hits, margin):
     """
     Return a list of HitGroup objects.
@@ -345,6 +338,24 @@ def diff(list1, list2):
 
     return diff(before_mid_group, list2[:mid_index]) + diff(after_mid_group, list2[mid_index+1:])
 
+
+def find_groups(chunk, experiment=False):
+    calc = WindowCalculator(chunk, 30)
+    pixel_snr = calc.pixel_snr()
+    two_pixel_snr = calc.two_pixel_snr()
+
+    pixel_thresh = 6
+    two_pixel_thresh = 4
+
+    if experiment:
+        pixel_thresh = 5
+        
+    mask = (pixel_snr > pixel_thresh) | (two_pixel_snr > two_pixel_thresh)
+
+    hits = find_hits(mask)            
+    groups = group_hits(chunk, hits, 10)
+    return [g for g in groups if len(g) > 1]
+        
 
 if __name__ == "__main__":
     filename = sys.argv[1]
