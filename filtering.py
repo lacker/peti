@@ -47,7 +47,8 @@ class File(object):
 class ChunkFetcher(object):
     def __init__(self, seed=None):
         if seed is None:
-            self.seed = random.randint(1000, 10000)
+            digits = 6
+            self.seed = random.randint(10 ** (digits - 1), 10 ** digits)
         else:
             self.seed = seed
         print("seed:", self.seed)
@@ -348,13 +349,13 @@ def find_groups(chunk, experiment=False):
     two_pixel_thresh = 4
 
     if experiment:
-        pixel_thresh = 5
+        pixel_thresh = 7
         
     mask = (pixel_snr > pixel_thresh) | (two_pixel_snr > two_pixel_thresh)
 
     hits = find_hits(mask)            
     groups = group_hits(chunk, hits, 10)
-    return [g for g in groups if len(g) > 1]
+    return [g for g in groups if len(g) > 2]
         
 
 if __name__ == "__main__":

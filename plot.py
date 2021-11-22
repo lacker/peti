@@ -63,4 +63,5 @@ def sxs(seed=None, n=10):
     while count < n:
         filename, i, chunk = fetcher.fetch()
         count += diff_chunk(filename, i, chunk=chunk)
-        
+    print("sxs done")
+    plt.close()
