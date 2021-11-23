@@ -18,6 +18,7 @@ def show(group):
     fig, ax = plt.subplots(figsize=region.shape)
     ax.imshow(region, rasterized=True, interpolation="nearest", cmap="viridis")
     display(fig)
+    plt.close()
 
     
 def show_list(groups):
@@ -84,4 +85,3 @@ def sxs(seed=None, n=10):
         filename, i, chunk = fetcher.fetch()
         count += diff_chunk(filename, i, chunk=chunk)
     print("sxs done")
-    plt.close()
