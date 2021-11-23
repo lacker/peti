@@ -49,17 +49,22 @@ def diff_chunk(filename, i, chunk=None):
         
     base = filtering.find_groups(chunk, experiment=False)
     exp = filtering.find_groups(chunk, experiment=True)
+
+    base_not_exp = filtering.diff(base, exp)
+    exp_not_base = filtering.diff(exp, base)
+
+    if not base_not_exp and not exp_not_base:
+        return 0
+    
     print(f"analyzing chunk {i} of {filename}")
     print(f"baseline has {len(base)} groups")
     print(f"experiment has {len(exp)} groups")
 
-    base_not_exp = filtering.diff(base, exp)
     if base_not_exp:
         print(f"{len(base_not_exp)} groups in baseline but not experiment:")
         base_not_exp = truncate(base_not_exp, limit)
         show_list(base_not_exp)
     
-    exp_not_base = filtering.diff(exp, base)
     if exp_not_base:
         print(f"{len(exp_not_base)} groups in experiment but not baseline:")
         exp_not_base = truncate(exp_not_base, limit)
