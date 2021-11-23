@@ -8,6 +8,7 @@ matplotlib.rc("figure", max_open_warning=0)
 from matplotlib import pyplot as plt
 
 from IPython.display import display
+import random
 
 import filtering
 
@@ -25,6 +26,15 @@ def show_list(groups):
         show(group)
 
 
+def truncate(alist, n):
+    """
+    Select a random sublist of length n if alist is longer.
+    """
+    if len(alist) <= n:
+        return alist
+    return random.sample(alist, n)
+    
+        
 def diff_chunk(filename, i, chunk=None):
     """
     Generate differences between experiment=True and experiment=False on the provided chunk.
@@ -34,6 +44,9 @@ def diff_chunk(filename, i, chunk=None):
         f = File(filename)
         chunk = f.get_chunk(i)
 
+    # Show a limited number of images if there are lots for a single chunk
+    limit = 5
+        
     base = filtering.find_groups(chunk, experiment=False)
     exp = filtering.find_groups(chunk, experiment=True)
     print(f"analyzing chunk {i} of {filename}")
@@ -43,11 +56,13 @@ def diff_chunk(filename, i, chunk=None):
     base_not_exp = filtering.diff(base, exp)
     if base_not_exp:
         print(f"{len(base_not_exp)} groups in baseline but not experiment:")
+        base_not_exp = truncate(base_not_exp, limit)
         show_list(base_not_exp)
     
     exp_not_base = filtering.diff(exp, base)
     if exp_not_base:
         print(f"{len(exp_not_base)} groups in experiment but not baseline:")
+        exp_not_base = truncate(exp_not_base, limit)
         show_list(exp_not_base)
 
     return len(base_not_exp) + len(exp_not_base)
