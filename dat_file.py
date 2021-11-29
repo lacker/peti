@@ -63,7 +63,7 @@ class DatFile(object):
         session, machine_name = session_looking_parts[0]
         base = parts[-1]
         assert base.endswith(".dat")
-        return os.path.join(H5_ROOT, session, machine_name, base[-4]: + ".h5")
+        return os.path.join(H5_ROOT, session, machine_name, base[-4:] + ".h5")
     
 
     def has_hits(self):
@@ -84,5 +84,9 @@ class DatFile(object):
         """
         Fetch a dat file chosen randomly from DAT_LIST.
         """
-        lines = [line for line in open(DAT_LIST) if line.endswith(".dat")]
-        return random.choice(lines)
+        choices = []
+        for line in open(DAT_LIST):
+            s = line.strip()
+            if s.endswith(".dat"):
+                choices.append(s)
+        return random.choice(choices)
