@@ -23,7 +23,7 @@ WIDTH = 60
 # This directory
 DIR = os.path.dirname(os.path.realpath(__file__))
 
-class File(object):
+class H5File(object):
     def __init__(self, filename):
         assert h5py.is_hdf5(filename)
         self.h5file = h5py.File(filename, "r")
@@ -63,7 +63,7 @@ class ChunkFetcher(object):
         Returns a (filename, chunk number, chunk) tuple.
         """
         filename = self.rng.choice(self.filenames)
-        f = File(filename)
+        f = H5File(filename)
         i = self.rng.randrange(f.num_chunks)
         chunk = f.get_chunk(i)
         return (filename, i, chunk)
@@ -360,6 +360,6 @@ def find_groups(chunk, experiment=False):
 
 if __name__ == "__main__":
     filename = sys.argv[1]
-    f = File(filename)
+    f = H5File(filename)
     f.process_all()
 
