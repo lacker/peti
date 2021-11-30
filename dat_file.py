@@ -8,6 +8,8 @@ import random
 import re
 import time
 
+from hit_group import group_hits
+
 DIR = os.path.dirname(os.path.realpath(__file__))
 
 DAT_LIST = os.path.join(DIR, "dats.txt")
@@ -56,13 +58,11 @@ class DatFile(object):
         return len(self.hits) > 0
 
     
-    def random_hits(self):
+    def coarse_list(self):
         """
-        Returns (coarse index, list of fine indexes), chosen randomly from the coarse channels with hits.
-        Raises an exception if there are no hits.
+        Returns a list of which coarse channels have hits.
         """
-        assert self.has_hits()
-        return random.choice(list(self.hits.items()))
+        return list(self.hits.keys())
 
 
     @staticmethod
@@ -77,3 +77,18 @@ class DatFile(object):
                 choices.append(s)
         filename = random.choice(choices)
         return DatFile(filename)
+
+
+    def hit_groups(self, data, coarse_index):
+        """
+        Returns a list of HitGroup for the given coarse index.
+        data is the chunk for this coarse index.
+        """
+        assert self.has_hits()
+        fines = self.hits[coarse_index]
+
+        # We don't have which rows for the hit, so just say 0.
+        # We also don't have the whole range so just use the one provided fine index.
+        hits = [(0, fine, fine) for fine in fines]
+        
+        return group_hits(data, hits)

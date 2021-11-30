@@ -11,6 +11,7 @@ from IPython.display import display
 import random
 
 import filtering
+import hit_group
 
 
 def show(group):
@@ -35,11 +36,12 @@ def truncate(alist, n):
         return alist
     return random.sample(alist, n)
     
-        
-def diff_chunk(filename, i, chunk=None):
+
+def diff_chunk(filename, i, chunk=None, baseline=None):
     """
     Generate differences between experiment=True and experiment=False on the provided chunk.
     Returns how many diffs we displayed.
+    If baseline is provided, use it as the list of groups to compare against.
     """
     if chunk is None:
         f = File(filename)
@@ -47,12 +49,15 @@ def diff_chunk(filename, i, chunk=None):
 
     # Show a limited number of images if there are lots for a single chunk
     limit = 5
-        
-    base = filtering.find_groups(chunk, experiment=False)
+
+    if baseline is None:
+        base = filtering.find_groups(chunk, experiment=False)
+    else:
+        base = baseline
     exp = filtering.find_groups(chunk, experiment=True)
 
-    base_not_exp = filtering.diff(base, exp)
-    exp_not_base = filtering.diff(exp, base)
+    base_not_exp = hit_group.diff(base, exp)
+    exp_not_base = hit_group.diff(exp, base)
 
     if not base_not_exp and not exp_not_base:
         return 0
