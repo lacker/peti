@@ -8,12 +8,11 @@ The "hit" data structure is a horizontal sequence of adjacent pixels defined by 
 WIDTH = 60
 
 class HitGroup(object):
-    def __init__(self, data, hits):
+    def __init__(self, hits):
         """
-        data is a slice of the h5 file. indexes are relative to data.
+        All indices are relative to a particular coarse channel, aka "chunk".
         hits is a list of hits.
         """
-        self.data = data
         self.hits = hits
         self.first_column = min(first_column for _, first_column, _ in hits)
         self.last_column = max(last_column for _, _, last_column in hits)
@@ -49,19 +48,19 @@ class HitGroup(object):
     
     def find_offset(self, width):
         """
-        Finds an offset so that self.data[:, offset : offset + width] has this hit group centered.
+        Finds an offset so that chunk[:, offset : offset + width] has this hit group centered.
         """
         center = (self.first_column + self.last_column) / 2
         ideal_offset = center - (width - 1) / 2
         return int(ideal_offset)
  
-    def region(self):
+    def region(self, chunk):
         """
         A normalized region around this hit.
         """
         width = WIDTH
         offset = self.find_offset(width)
-        region = self.data[:, offset:offset+width]
+        region = chunk[:, offset:offset+width]
         rmin = region.min()
         rmax = region.max()
         normal = (region - rmin) / (rmax - rmin)
@@ -84,7 +83,7 @@ class HitGroup(object):
         return False
 
     
-def group_hits(data, hits, margin=10):
+def group_hits(hits, margin=10):
     """
     Return a list of HitGroup objects.
     A hit is a (row, first_column, last_column) tuple.
@@ -109,13 +108,13 @@ def group_hits(data, hits, margin=10):
             pending_last_column = max(pending_last_column, last_column)
         else:
             # This hit goes into its own group
-            groups.append(HitGroup(data, pending_group))
+            groups.append(HitGroup(pending_group))
             pending_group = [hit]
             pending_last_column = last_column
 
     if pending_group is not None:
         # Turn the last pending group into a full group
-        groups.append(HitGroup(data, pending_group))
+        groups.append(HitGroup(pending_group))
 
     return groups
     

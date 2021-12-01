@@ -148,6 +148,9 @@ def find_hits(mask):
 
 
 def find_groups(chunk, experiment=False):
+    """
+    Returns a list of HitGroup objects.
+    """
     calc = WindowCalculator(chunk, 30)
     pixel_snr = calc.pixel_snr()
     two_pixel_snr = calc.two_pixel_snr()
@@ -161,7 +164,7 @@ def find_groups(chunk, experiment=False):
     mask = (pixel_snr > pixel_thresh) | (two_pixel_snr > two_pixel_thresh)
 
     hits = find_hits(mask)            
-    groups = group_hits(chunk, hits)
+    groups = group_hits(hits)
     return [g for g in groups if len(g) > 2]
         
 

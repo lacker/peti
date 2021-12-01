@@ -79,10 +79,9 @@ class DatFile(object):
         return DatFile(filename)
 
 
-    def hit_groups(self, data, coarse_index):
+    def hit_groups(self, coarse_index):
         """
         Returns a list of HitGroup for the given coarse index.
-        data is the chunk for this coarse index.
         """
         assert self.has_hits()
         fines = self.hits[coarse_index]
@@ -91,4 +90,4 @@ class DatFile(object):
         # We also don't have the whole range so just use the one provided fine index.
         hits = [(0, fine, fine) for fine in fines]
         
-        return group_hits(data, hits)
+        return group_hits(hits)
