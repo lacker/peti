@@ -8,12 +8,12 @@ import random
 import re
 import time
 
+from config import H5_ROOT
 from hit_group import group_hits
 
 DIR = os.path.dirname(os.path.realpath(__file__))
 
 DAT_LIST = os.path.join(DIR, "dats.txt")
-H5_ROOT = "/datag/pipeline"
 
 
 class DatFile(object):
