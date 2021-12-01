@@ -10,8 +10,9 @@ from matplotlib import pyplot as plt
 from IPython.display import display
 import random
 
-import filtering
+import h5_file
 import hit_group
+import scanner
 
 
 def show(group):
@@ -51,10 +52,10 @@ def diff_chunk(filename, i, chunk=None, baseline=None):
     limit = 5
 
     if baseline is None:
-        base = filtering.find_groups(chunk, experiment=False)
+        base = scanner.find_groups(chunk, experiment=False)
     else:
         base = baseline
-    exp = filtering.find_groups(chunk, experiment=True)
+    exp = scanner.find_groups(chunk, experiment=True)
 
     base_not_exp = hit_group.diff(base, exp)
     exp_not_base = hit_group.diff(exp, base)
@@ -83,7 +84,7 @@ def sxs(seed=None, n=10):
     """
     Generate differences between experiment=True and experiment=False until we have at least n of them to display.
     """
-    fetcher = filtering.ChunkFetcher(seed=seed)
+    fetcher = h5_file.ChunkFetcher(seed=seed)
 
     count = 0
     while count < n:
