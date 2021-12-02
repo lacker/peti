@@ -7,11 +7,12 @@ Reports which columns are "interesting".
 import os
 import random
 import sys
+import time
 
 from config import xp
 from h5_file import H5File
 from hit_group import group_hits
-
+from hit_map import HitMap
 
 def calculate_window_mean(array, window_size):
     """
@@ -168,8 +169,25 @@ def find_groups(chunk, experiment=False):
     return [g for g in groups if len(g) > 2]
         
 
+def scan(h5_filename):
+    """
+    Create a HitMap for the given h5 file.
+    """
+    f = H5File(h5_filename)
+    hitmap = HitMap(h5_filename, f.num_chunks)
+    for i in range(f.num_chunks):
+        chunk = f.get_chunk(i)
+        groups = find_groups(chunk)
+        hitmap.add_groups(i, chunk)
+    return hitmap
+
+
 if __name__ == "__main__":
     filename = sys.argv[1]
-    f = H5File(filename)
-    f.process_all()
+    start_time = time.time()
+    hitmap = scan(filename)
+    end_time = time.time()
+    elapsed = end_time - start_time
+    print(f"scanned {filename} in {elapsed:.1f}s, finding {hitmap.num_hits()} hits", flush=True)
+    hitmap.save()
 

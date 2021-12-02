@@ -71,3 +71,9 @@ class HitMap(object):
         h5_filename = plain["h5_filename"]
         assert h5_filename == front_replace(filename, HIT_MAP_ROOT, H5_ROOT)
         return HitMap(h5_filename, plain["coarse_channels"], hits=plain["hits"])
+
+    def num_hits():
+        """
+        How many hits we have across all coarse channels.
+        """
+        return sum(len(value) for value in self.hits.values())
