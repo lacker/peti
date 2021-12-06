@@ -6,6 +6,7 @@ It's JSON, so it should be extensible.
 
 import json
 import os
+from pathlib import Path
 
 from config import H5_ROOT
 
@@ -59,7 +60,10 @@ class HitMap(object):
         return HitMap(plain["h5_filename"], plain["coarse_channels"], hits=plain["hits"])
 
     def save(self):
-        hit_map_filename = front_replace(self.h5_filename, H5_ROOT, HIT_MAP_ROOT)
+        hit_map_filename = front_replace(self.h5_filename, H5_ROOT, HIT_MAP_ROOT)[:-3] + ".hitmap"
+        dirname = os.path.dirname(hit_map_filename)
+        Path(dirname).mkdir(parents=True, exist_ok=True)
+        
         with open(hit_map_filename, "w") as outfile:
             # Should be deterministic because we use sort_keys
             json.dump(self.to_plain(), outfile, indent=2, sort_keys=True)
@@ -72,7 +76,7 @@ class HitMap(object):
         assert h5_filename == front_replace(filename, HIT_MAP_ROOT, H5_ROOT)
         return HitMap(h5_filename, plain["coarse_channels"], hits=plain["hits"])
 
-    def num_hits():
+    def num_hits(self):
         """
         How many hits we have across all coarse channels.
         """

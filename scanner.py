@@ -135,7 +135,7 @@ def find_hits(mask):
 
     # Group pixel hits into adjacent sequences
     hits = []
-    for row, col in sorted(zip(rows, cols)):
+    for row, col in sorted(zip(map(int, rows), map(int, cols))):
         if hits:
             prev_row, prev_first_column, prev_last_column = hits[-1]
             if prev_row == row and prev_last_column + 1 == col:
@@ -175,10 +175,16 @@ def scan(h5_filename):
     """
     f = H5File(h5_filename)
     hitmap = HitMap(h5_filename, f.num_chunks)
+    print("loaded", h5_filename, flush=True)
     for i in range(f.num_chunks):
+        start_time = time.time()
         chunk = f.get_chunk(i)
+        mid_time = time.time()
         groups = find_groups(chunk)
-        hitmap.add_groups(i, chunk)
+        end_time = time.time()
+        elapsed = end_time - start_time
+        hitmap.add_groups(i, groups)
+        print(f"scanned chunk {i} in {elapsed:.1f}s, finding {len(groups)} hits", flush=True)
     return hitmap
 
 
@@ -188,6 +194,7 @@ if __name__ == "__main__":
     hitmap = scan(filename)
     end_time = time.time()
     elapsed = end_time - start_time
-    print(f"scanned {filename} in {elapsed:.1f}s, finding {hitmap.num_hits()} hits", flush=True)
+    print(f"scan of {filename} complete")
+    print(f"total scan time {elapsed:.1f}s, finding {hitmap.num_hits()} hits", flush=True)
     hitmap.save()
 

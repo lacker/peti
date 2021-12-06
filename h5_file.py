@@ -59,3 +59,13 @@ class ChunkFetcher(object):
         chunk = f.get_chunk(i)
         return (filename, i, chunk)
 
+    def find(self, predicate):
+        """
+        Returns a (predicate(chunk), filename, chunk number, chunk) tuple where predicate(chunk) is truthy.
+        """
+        while True:
+            filename, i, chunk = self.fetch()
+            print(f"checking chunk {i} of {filename} ...")
+            answer = predicate(chunk)
+            if answer:
+                return (answer, filename, i, chunk)

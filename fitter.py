@@ -7,4 +7,6 @@ class Fitter(object):
         self.data = data
 
     def fit_linear(self):
-        pass
+        # Model the noise as gaussian
+        mean = xp.mean(self.data)
+        std = xp.std(self.data)
