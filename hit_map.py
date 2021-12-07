@@ -22,6 +22,15 @@ def front_replace(s, old, new):
     return s.replace(old, new, 1)
 
 
+def make_hit_map_filename(h5_filename):
+    """
+    The hitmap filename corresponding to an h5 filename
+    """
+    assert h5_filename.endswith(".h5")
+    return front_replace(h5_filename, H5_ROOT, HIT_MAP_ROOT)[:-3] + ".hitmap"
+
+
+
 class HitMap(object):
     def __init__(self, h5_filename, coarse_channels, hits=None):
         """
@@ -60,7 +69,7 @@ class HitMap(object):
         return HitMap(plain["h5_filename"], plain["coarse_channels"], hits=plain["hits"])
 
     def save(self):
-        hit_map_filename = front_replace(self.h5_filename, H5_ROOT, HIT_MAP_ROOT)[:-3] + ".hitmap"
+        hit_map_filename = make_hit_map_filename(self.h5_filename)
         dirname = os.path.dirname(hit_map_filename)
         Path(dirname).mkdir(parents=True, exist_ok=True)
         
@@ -73,7 +82,7 @@ class HitMap(object):
         with open(filename) as infile:
             plain = json.load(infile)
         h5_filename = plain["h5_filename"]
-        assert h5_filename == front_replace(filename, HIT_MAP_ROOT, H5_ROOT)
+        assert hit_map_filename == make_hit_map_filename(h5_filename)
         return HitMap(h5_filename, plain["coarse_channels"], hits=plain["hits"])
 
     def num_hits(self):

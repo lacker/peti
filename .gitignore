@@ -4,3 +4,4 @@ __pycache__
 input.txt
 dats.txt
 *.ipynb
+*.pyc
