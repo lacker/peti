@@ -10,13 +10,21 @@ from matplotlib import pyplot as plt
 from IPython.display import display
 import random
 
+from config import xp
 import h5_file
 import hit_group
 import scanner
 
 
+def to_numpy(arr):
+    if hasattr(xp, "asnumpy"):
+        return xp.asnumpy(arr)
+    else:
+        return arr
+
+    
 def show(group, chunk):
-    region = group.region(chunk)
+    region = to_numpy(group.region(chunk))
     fig, ax = plt.subplots(figsize=region.shape)
     ax.imshow(region, rasterized=True, interpolation="nearest", cmap="viridis")
     display(fig)

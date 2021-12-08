@@ -17,27 +17,53 @@ DAT_LIST = os.path.join(DIR, "dats.txt")
 
 
 class DatFile(object):
+    """
+    self.hits maps coarse index to a list of (first column, last column) pairs.
+    """
     def __init__(self, filename):
         self.filename = filename
 
         # self.groups[coarse index] is a list of fine indices.
         self.hits = {}
 
+        header = {}
+
         for line in open(self.filename):
 
             if line.startswith("#"):
+                parts = line.split()
+                pairs = zip(parts, parts[1:])
+                for key_colon, value in pairs:
+                    if not key_colon.endswith(":"):
+                        continue
+                    key = key_colon.strip(":")
+                    header[key] = value
                 continue
 
+            # Calculate how much drift rate you need to drift one pixel
+            deltaf = float(header["DELTAF(Hz)"])
+            obs_length = float(header["obs_length"])
+            drift_rate_per_pixel = deltaf / obs_length
+            
             parts = line.split()
             if len(parts) != 12:
                 raise ValueError("unexpected dat file format")
-            # drift_rate = float(parts[1])
-            fine_index = int(parts[5])
+            drift_rate = float(parts[1])
+            start_fine_index = int(parts[5])
             coarse_index = int(parts[10])
 
+            # Calculate how many pixels this signal drifted by
+            # Can be positive or negative
+            float_drift_pixels = drift_rate / drift_rate_per_pixel
+            drift_pixels = round(float_drift_pixels)
+            assert abs(float_drift_pixels - drift_pixels) < 0.01
+            end_fine_index = start_fine_index + drift_pixels
+
+            first_column, last_column = sorted([start_fine_index, end_fine_index])
+            
             if coarse_index not in self.hits:
                 self.hits[coarse_index] = []
-            self.hits[coarse_index].append(fine_index)
+            self.hits[coarse_index].append((first_column, last_column))
 
             
     def h5_filename(self):
@@ -84,10 +110,9 @@ class DatFile(object):
         Returns a list of HitGroup for the given coarse index.
         """
         assert self.has_hits()
-        fines = self.hits[coarse_index]
+        column_pairs = self.hits[coarse_index]
 
         # We don't have which rows for the hit, so just say 0.
-        # We also don't have the whole range so just use the one provided fine index.
-        hits = [(0, fine, fine) for fine in fines]
+        hits = [(0, c1, c2) for (c1, c2) in column_pairs]
         
         return group_hits(hits)
