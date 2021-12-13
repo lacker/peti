@@ -37,6 +37,17 @@ def show_list(groups, chunk):
         show(group, chunk)
 
 
+def show_fit(fitter):
+    region = to_numpy(fitter.data)
+    end_y = region.shape[0] - 1
+    end_x = fitter.start_index + fitter.drift_rate * end_y
+    fig, ax = plt.subplots(figsize=region.shape)
+    ax.imshow(region, rasterized=True, interpolation="nearest", cmap="viridis")
+    ax.plot((fitter.start_index, end_x), (0, end_y), "r", lw=2)
+    display(fig)
+    plt.close()
+        
+        
 def truncate(alist, n):
     """
     Select a random sublist of length n if alist is longer.

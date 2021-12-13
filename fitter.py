@@ -1,16 +1,18 @@
 #!/usr/bin/env python
 
 from config import xp
-
+from hit_group import MARGIN
 
 class Fitter(object):
-    def __init__(self, data, alpha=4):
+    def __init__(self, group, chunk, alpha=3):
         """
         Do sigma clipping to fit a Gaussian noise model to this data.
         Model the data's mean and standard deviation. Then remove all points more than alpha standard deviations above the mean.
         Repeat until this converges.
 
-        self.data stores the data
+        self.data stores the data we are fitting to
+        self.offset is how much it is horizontally offset from the underlying chunk
+
         self.mean, self.std store the noise model
         self.mask stores which points are modeled by noise
 
@@ -19,10 +21,11 @@ class Fitter(object):
         self.drift_rate is the rate of signal drift (in horizontal pixels per vertical pixel)
         self.mse is the mean squared error (horizontal distance) from the fit line to the signal pixel
         """
-        self.data = data
-
+        self.offset = max(group.first_column - MARGIN, 0)
+        self.data = chunk[:, self.offset : group.last_column + MARGIN + 1]
+        
         # Start by considering all data to be in bounds
-        in_bounds = data
+        in_bounds = self.data
 
         while True:
             self.mean = in_bounds.mean()
@@ -38,7 +41,7 @@ class Fitter(object):
 
             if new_in_bounds.size == in_bounds.size:
                 # We have converged.
-                return
+                break
 
             raise ValueError(f"we went backwards during sigma clipping, from {in_bounds.size} points to {new_in_bounds.size} points")
 

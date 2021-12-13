@@ -7,6 +7,9 @@ The "hit" data structure is a horizontal sequence of adjacent pixels defined by 
 # Standard image width to display
 WIDTH = 60
 
+# Standard amount below which to combine hit groups
+MARGIN = 10
+
 class HitGroup(object):
     def __init__(self, hits):
         """
@@ -83,7 +86,7 @@ class HitGroup(object):
         return False
 
     
-def group_hits(hits, margin=10):
+def group_hits(hits):
     """
     Return a list of HitGroup objects.
     A hit is a (row, first_column, last_column) tuple.
@@ -102,7 +105,7 @@ def group_hits(hits, margin=10):
             # This is the first hit. Make a pending group
             pending_group = [hit]
             pending_last_column = last_column
-        elif pending_last_column + margin >= first_column:
+        elif pending_last_column + MARGIN >= first_column:
             # Combine this hit into the previous hit group
             pending_group.append(hit)
             pending_last_column = max(pending_last_column, last_column)
