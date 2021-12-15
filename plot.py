@@ -17,18 +17,18 @@ import scanner
 from util import to_numpy
 
     
-def show(group, chunk):
-    region = chunk.display_region(group.first_column, group.last_column)
+def show_hit(hit, chunk):
+    region = chunk.display_region(hit.first_column, hit.last_column)
     fig, ax = plt.subplots(figsize=region.shape)
     ax.imshow(region, rasterized=True, interpolation="nearest", cmap="viridis")
     display(fig)
     plt.close()
 
     
-def show_list(groups, chunk):
-    for i, group in list(enumerate(groups))[:100]:
-        print(f"group {i} / {len(groups)}. {len(group)} hits.")
-        show(group, chunk)
+def show_hits(hits, chunk):
+    for i, hit in list(enumerate(hits))[:100]:
+        print(f"hit {i} / {len(hits)}. {len(hit)} windows.")
+        show_hit(hit, chunk)
 
 
 def show_fit(fitter, mask=False):
@@ -58,9 +58,8 @@ def diff_chunk(chunk, baseline=None, experiment=None):
     """
     Generate differences between experiment=True and experiment=False on the provided chunk.
     Returns how many diffs we displayed.
-    If baseline and/or experiment are provided, use it as the list of groups to compare against.
-    They should be lists of HitGroup objects.
-    If they aren't provided, use find_groups to find them.
+    If baseline and/or experiment are provided, use it as the list of hits to compare against.
+    If they aren't provided, use find_hits to find them.
     """
     if chunk is None:
         f = File(filename)
@@ -70,15 +69,15 @@ def diff_chunk(chunk, baseline=None, experiment=None):
     limit = 5
 
     if baseline is None:
-        base = scanner.find_groups(chunk, experiment=False)
+        base = scanner.find_hits(chunk, experiment=False)
     else:
         base = baseline
 
     if experiment is None:
-        exp = scanner.find_groups(chunk, experiment=True)
+        exp = scanner.find_hits(chunk, experiment=True)
     else:
         exp = experiment
-
+    
     base_not_exp = hit_group.diff(base, exp)
     exp_not_base = hit_group.diff(exp, base)
 
@@ -86,18 +85,18 @@ def diff_chunk(chunk, baseline=None, experiment=None):
         print("baseline and experiment are identical")
         return 0
     
-    print(f"baseline has {len(base)} groups")
-    print(f"experiment has {len(exp)} groups")
+    print(f"baseline has {len(base)} hits")
+    print(f"experiment has {len(exp)} hits")
 
     if base_not_exp:
-        print(f"{len(base_not_exp)} groups in baseline but not experiment:")
+        print(f"{len(base_not_exp)} hits in baseline but not experiment:")
         base_not_exp = truncate(base_not_exp, limit)
-        show_list(base_not_exp, chunk)
+        show_hits(base_not_exp, chunk)
     
     if exp_not_base:
-        print(f"{len(exp_not_base)} groups in experiment but not baseline:")
+        print(f"{len(exp_not_base)} hits in experiment but not baseline:")
         exp_not_base = truncate(exp_not_base, limit)
-        show_list(exp_not_base, chunk)
+        show_hits(exp_not_base, chunk)
 
     return len(base_not_exp) + len(exp_not_base)
 

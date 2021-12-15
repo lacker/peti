@@ -37,40 +37,7 @@ class HitGroup(object):
     def __len__(self):
         return len(self.hit_windows)
     
-    def is_blip(self):
-        """
-        A "blip" is any signal that only occurs at one point in time.
-        """
-        return len(self.hit_windows) == 1
 
-    def num_columns(self):
-        return self.last_column - self.first_column + 1
-
-    def pixels(self):
-        """
-        Iterator of (row, column) pairs.
-        """
-        for row, first_column, last_column in self.hit_windows:
-            for col in range(first_column, last_column + 1):
-                yield row, col
-    
-    def __lt__(self, other):
-        return self.last_column < other.first_column
-
-    def overlaps(self, other):
-        if self < other:
-            return False
-        if other < self:
-            return False
-        return True
-
-    def overlaps_list(self, other_list):
-        for other in other_list:
-            if self.overlaps(other):
-                return True
-        return False
-
-    
 def group_hit_windows(hit_windows):
     """
     Return a list of HitGroup objects.
@@ -109,7 +76,8 @@ def group_hit_windows(hit_windows):
     
 def diff(list1, list2):
     """
-    Takes two lists of hit groups.
+    Takes two lists of hits.
+    A hit can be anything with .first_column and .last_column on it.
     list2 must be sorted.
     Returns the groups that are in list1 but do not overlap any groups in list2.
     """
@@ -118,16 +86,16 @@ def diff(list1, list2):
     
     # We will recursively split list2
     mid_index = len(list2) // 2
-    mid_group = list2[mid_index]
+    mid_hit = list2[mid_index]
     
-    before_mid_group = []
-    after_mid_group = []
-    for group in list1:
-        if group < mid_group:
-            before_mid_group.append(group)
-        if mid_group < group:
-            after_mid_group.append(group)
+    before_mid_hit = []
+    after_mid_hit = []
+    for hit in list1:
+        if hit.last_column < mid_hit.first_column:
+            before_mid_hit.append(hit)
+        if mid_hit.last_column < hit.first_column:
+            after_mid_hit.append(hit)
 
-    return diff(before_mid_group, list2[:mid_index]) + diff(after_mid_group, list2[mid_index+1:])
+    return diff(before_mid_hit, list2[:mid_index]) + diff(after_mid_hit, list2[mid_index+1:])
 
 

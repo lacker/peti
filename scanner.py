@@ -122,33 +122,32 @@ class WindowCalculator(object):
         return output
 
     
-def find_hits(mask):
+def find_hit_windows(mask):
     """
-    Returns a list of hits. A hit is a horizontal sequence of adjacent pixels defined by a tuple:
+    Returns a list of hit windows. A hit window is a horizontal sequence of adjacent pixels defined by a tuple:
       (row, first_column, last_column)
     so that the hit matches:
       array[row, first_column : (last_column + 1)]
     mask is a boolean array of which spots to count as a hit.
-    This "hit" tuple structure is used in other places too.
     """
     rows, cols = xp.where(mask)
 
     # Group pixel hits into adjacent sequences
-    hits = []
+    hit_windows = []
     for row, col in sorted(zip(map(int, rows), map(int, cols))):
-        if hits:
-            prev_row, prev_first_column, prev_last_column = hits[-1]
+        if hit_windows:
+            prev_row, prev_first_column, prev_last_column = hit_windows[-1]
             if prev_row == row and prev_last_column + 1 == col:
                 # This pixel is an extension of the previous hit
-                hits[-1] = (prev_row, prev_first_column, col)
+                hit_windows[-1] = (prev_row, prev_first_column, col)
                 continue
         # This pixel is the start of its own hit
-        hits.append((row, col, col))
+        hit_windows.append((row, col, col))
 
-    return hits
+    return hit_windows
 
 
-def find_groups(chunk, experiment=False):
+def find_hits(chunk, experiment=False):
     """
     Returns a list of HitGroup objects.
     """
@@ -164,8 +163,8 @@ def find_groups(chunk, experiment=False):
         
     mask = (pixel_snr > pixel_thresh) | (two_pixel_snr > two_pixel_thresh)
 
-    hits = find_hits(mask)            
-    groups = group_hit_windows(hits)
+    hit_windows = find_hit_windows(mask)            
+    groups = group_hit_windows(hit_windows)
     return [g for g in groups if len(g) > 2]
         
 
@@ -181,11 +180,11 @@ def scan(h5_filename):
         start_time = time.time()
         chunk = f.get_chunk(i)
         mid_time = time.time()
-        groups = find_groups(chunk)
+        hits = find_hits(chunk)
         end_time = time.time()
         elapsed = end_time - start_time
-        hitmap.add_groups(i, groups)
-        print(f"scanned chunk {i} in {elapsed:.1f}s, finding {len(groups)} hits", flush=True)
+        hitmap.add_hits(i, hits)
+        print(f"scanned chunk {i} in {elapsed:.1f}s, finding {len(hits)} hits", flush=True)
     file_end_time = time.time()
     file_elapsed = end_time = start_time
     print(f"scan of {h5_filename} complete")

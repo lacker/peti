@@ -46,9 +46,9 @@ class HitMap(object):
         else:
             self.hits = hits
 
-    def add_groups(self, coarse_index, groups):
+    def add_hits(self, coarse_index, hit_groups):
         """
-        groups is a list of HitGroups
+        hit_groups is a list of HitGroups
         """
         if coarse_index in self.hits:
             raise ValueError("you can only call add_groups once per coarse channel")

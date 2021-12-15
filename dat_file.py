@@ -8,12 +8,21 @@ import random
 import re
 import time
 
-from config import H5_ROOT
+from config import H5_ROOT, MARGIN
 from hit_group import group_hit_windows
 
 DIR = os.path.dirname(os.path.realpath(__file__))
 
 DAT_LIST = os.path.join(DIR, "dats.txt")
+
+
+class DatHit(object):
+    """
+    Information for a hit that is read from the dat file.
+    """
+    def __init__(self, first_column, last_column):
+        self.first_column = first_column
+        self.last_column = last_column
 
 
 class DatFile(object):
@@ -63,7 +72,7 @@ class DatFile(object):
             
             if coarse_index not in self.hits:
                 self.hits[coarse_index] = []
-            self.hits[coarse_index].append((first_column, last_column))
+            self.hits[coarse_index].append(DatHit(first_column, last_column))
 
             
     def h5_filename(self):
@@ -105,15 +114,17 @@ class DatFile(object):
         return DatFile(filename)
 
 
-    def hit_groups(self, coarse_index):
+    def get_hits(self, coarse_index):
         """
-        Returns a list of HitGroup for the given coarse index.
+        Returns a list of DatHit objects for the given coarse index.
+        Combines hits within MARGIN.
         """
         assert self.has_hits()
-        column_pairs = self.hits[coarse_index]
+        answer = []
+        for hit in self.hits[coarse_index]:
+            if answer and answer[-1].last_column + MARGIN >= hit.first_column:
+                answer[-1] = DatHit(answer[-1].first_column, hit.last_column)
+            else:
+                answer.append(hit)
+        return answer
 
-        # We don't have which rows for the hit, so just say 0.
-        # This is kind of hacky and I would rather avoid it.
-        # Fundamentally dat files don't have a "hit group" type data structure in them.
-        hits = [(0, c1, c2) for (c1, c2) in column_pairs]
-        return group_hit_windows(hits)
