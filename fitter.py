@@ -35,8 +35,8 @@ class Fitter(object):
         in_bounds = self.data[self.mask]
 
         while True:
-            self.mean = in_bounds.mean()
-            self.std = in_bounds.std()
+            self.mean = in_bounds.mean().item()
+            self.std = in_bounds.std().item()
             threshold = self.mean + alpha * self.std
             self.mask = xp.logical_and(self.mask, self.data < threshold)
             new_in_bounds = self.data[self.mask]
@@ -61,3 +61,6 @@ class Fitter(object):
         self.drift_rate, self.start_index = solution
         self.mse = residual.item() / self.num_pixels
 
+        # Calculate SNR by taking one pixel per row
+        signal = xp.amax(self.data, axis=1).mean().item()
+        self.snr = (signal - self.mean) / self.std
