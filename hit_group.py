@@ -56,7 +56,15 @@ class HitGroup(object):
         center = (self.first_column + self.last_column) / 2
         ideal_offset = center - (width - 1) / 2
         return int(ideal_offset)
- 
+
+    def pixels(self):
+        """
+        Iterator of (row, column) pairs.
+        """
+        for row, first_column, last_column in self.hits:
+            for col in range(first_column, last_column + 1):
+                yield row, col
+    
     def region(self, chunk):
         """
         A normalized region around this hit.

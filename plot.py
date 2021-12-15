@@ -37,8 +37,11 @@ def show_list(groups, chunk):
         show(group, chunk)
 
 
-def show_fit(fitter):
-    region = to_numpy(fitter.data)
+def show_fit(fitter, mask=False):
+    if mask:
+        region = to_numpy(1 - fitter.mask.astype(float))
+    else:
+        region = to_numpy(fitter.data)
     end_y = region.shape[0] - 1
     end_x = fitter.start_index + fitter.drift_rate * end_y
     fig, ax = plt.subplots(figsize=region.shape)

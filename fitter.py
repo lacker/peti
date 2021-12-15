@@ -4,7 +4,7 @@ from config import xp
 from hit_group import MARGIN
 
 class Fitter(object):
-    def __init__(self, group, chunk, alpha=3):
+    def __init__(self, group, chunk, alpha=3.5):
         """
         Do sigma clipping to fit a Gaussian noise model to this data.
         Model the data's mean and standard deviation. Then remove all points more than alpha standard deviations above the mean.
@@ -24,14 +24,21 @@ class Fitter(object):
         self.offset = max(group.first_column - MARGIN, 0)
         self.data = chunk[:, self.offset : group.last_column + MARGIN + 1]
         
-        # Start by considering all data to be in bounds
-        in_bounds = self.data
+        # Start by masking out the strongest pixel for each hit
+        self.mask = xp.full(self.data.shape, True, dtype=bool)
+        for row, first_column, last_column in group.hits:
+            begin = first_column - self.offset
+            end = last_column - self.offset + 1
+            max_index = self.data[row][begin:end].argmax()
+            self.mask[row][begin + max_index] = False
+            
+        in_bounds = self.data[self.mask]
 
         while True:
             self.mean = in_bounds.mean()
             self.std = in_bounds.std()
             threshold = self.mean + alpha * self.std
-            self.mask = self.data < threshold
+            self.mask = xp.logical_and(self.mask, self.data < threshold)
             new_in_bounds = self.data[self.mask]
 
             if new_in_bounds.size < in_bounds.size:
@@ -43,7 +50,8 @@ class Fitter(object):
                 # We have converged.
                 break
 
-            raise ValueError(f"we went backwards during sigma clipping, from {in_bounds.size} points to {new_in_bounds.size} points")
+            # The logical_and should prevent this
+            raise ValueError(f"coding error")
 
         # Do a linear regression
         row_indexes, col_indexes = xp.where(xp.logical_not(self.mask))
@@ -51,5 +59,5 @@ class Fitter(object):
         inputs = xp.vstack([row_indexes, xp.ones(len(row_indexes))]).T
         solution, residual, _, _ = xp.linalg.lstsq(inputs, col_indexes, rcond=None)
         self.drift_rate, self.start_index = solution
-        self.mse = residual / self.num_pixels
+        self.mse = residual.item() / self.num_pixels
 
