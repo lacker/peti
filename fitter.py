@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
-from config import xp
-from hit_group import MARGIN
+from config import MARGIN, xp
 
 class Fitter(object):
     def __init__(self, group, chunk, alpha=3.5):
@@ -22,11 +21,11 @@ class Fitter(object):
         self.mse is the mean squared error (horizontal distance) from the fit line to the signal pixel
         """
         self.offset = max(group.first_column - MARGIN, 0)
-        self.data = chunk[:, self.offset : group.last_column + MARGIN + 1]
+        self.data = chunk.array[:, self.offset : group.last_column + MARGIN + 1]
         
-        # Start by masking out the strongest pixel for each hit
+        # Start by masking out the strongest pixel for each hit window
         self.mask = xp.full(self.data.shape, True, dtype=bool)
-        for row, first_column, last_column in group.hits:
+        for row, first_column, last_column in group.hit_windows:
             begin = first_column - self.offset
             end = last_column - self.offset + 1
             max_index = self.data[row][begin:end].argmax()

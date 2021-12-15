@@ -10,6 +10,7 @@ import os
 import random
 
 from config import xp
+from data_range import DataRange
 
 # This directory
 DIR = os.path.dirname(os.path.realpath(__file__))
@@ -26,13 +27,19 @@ class H5File(object):
 
     def get_chunk(self, i):
         assert 0 <= i < self.num_chunks
-        array = xp.array(self.data[:, 0, (i * self.chunk_size):((i+1) * self.chunk_size)])
+        offset = i * self.chunk_size
+        array = xp.array(self.data[:, 0, offset : offset + self.chunk_size])
 
         # Blur out the exact middle, that's the DC spike
         midpoint = self.chunk_size // 2
         array[:, midpoint] = (array[:, midpoint - 1] + array[:, midpoint + 1]) / 2
 
-        return array.view()
+        return DataRange(self, offset, array.view())
+
+    def get_range(self, begin, end):
+        i = begin // self.chunk_size
+        chunk = self.get_chunk(i)
+        return chunk.get_range(begin - chunk.offset, end - chunk.offset)
 
 
 class ChunkFetcher(object):

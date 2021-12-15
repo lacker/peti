@@ -11,7 +11,7 @@ import time
 
 from config import xp
 from h5_file import H5File
-from hit_group import group_hits
+from hit_group import group_hit_windows
 from hit_map import HitMap
 
 def calculate_window_mean(array, window_size):
@@ -69,14 +69,14 @@ def apply_max_window(vector, window_size):
     
 
 class WindowCalculator(object):
-    def __init__(self, array, window_size):
+    def __init__(self, data, window_size):
         """
         window_size is the size of the window to use for noise.
-        array is 2d, where the second dimension is the one we are windowing along.
+        data is a DataRange.
         """
-        self.array = array
+        self.array = data.array
         self.window_size = window_size
-        self.means, self.devs = calculate_window_stats(array, window_size)
+        self.means, self.devs = calculate_window_stats(self.array, window_size)
 
     def pixel_snr(self):        
         """
@@ -165,7 +165,7 @@ def find_groups(chunk, experiment=False):
     mask = (pixel_snr > pixel_thresh) | (two_pixel_snr > two_pixel_thresh)
 
     hits = find_hits(mask)            
-    groups = group_hits(hits)
+    groups = group_hit_windows(hits)
     return [g for g in groups if len(g) > 2]
         
 

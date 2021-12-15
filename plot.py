@@ -14,17 +14,11 @@ from config import xp
 import h5_file
 import hit_group
 import scanner
-
-
-def to_numpy(arr):
-    if hasattr(xp, "asnumpy"):
-        return xp.asnumpy(arr)
-    else:
-        return arr
+from util import to_numpy
 
     
 def show(group, chunk):
-    region = to_numpy(group.region(chunk))
+    region = chunk.display_region(group.first_column, group.last_column)
     fig, ax = plt.subplots(figsize=region.shape)
     ax.imshow(region, rasterized=True, interpolation="nearest", cmap="viridis")
     display(fig)

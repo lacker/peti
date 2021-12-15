@@ -9,7 +9,7 @@ import re
 import time
 
 from config import H5_ROOT
-from hit_group import group_hits
+from hit_group import group_hit_windows
 
 DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -113,6 +113,7 @@ class DatFile(object):
         column_pairs = self.hits[coarse_index]
 
         # We don't have which rows for the hit, so just say 0.
+        # This is kind of hacky and I would rather avoid it.
+        # Fundamentally dat files don't have a "hit group" type data structure in them.
         hits = [(0, c1, c2) for (c1, c2) in column_pairs]
-        
-        return group_hits(hits)
+        return group_hit_windows(hits)
