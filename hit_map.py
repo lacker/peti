@@ -46,12 +46,12 @@ class HitMap(object):
         else:
             self.hits = hits
 
-    def add_hits(self, coarse_index, hit_groups):
+    def add_hits(self, coarse_index, hits):
         """
-        hit_groups is a list of HitGroups
+        hits is a list of HitInfo objects.
         """
         if coarse_index in self.hits:
-            raise ValueError("you can only call add_groups once per coarse channel")
+            raise ValueError("you can only call add_hits once per coarse channel")
         self.hits[coarse_index] = [(g.first_column, g.last_column) for g in groups]
 
     def to_plain(self):

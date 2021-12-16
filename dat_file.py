@@ -9,20 +9,11 @@ import re
 import time
 
 from config import H5_ROOT, MARGIN
-from hit_group import group_hit_windows
+from hit_info import HitInfo
 
 DIR = os.path.dirname(os.path.realpath(__file__))
 
 DAT_LIST = os.path.join(DIR, "dats.txt")
-
-
-class DatHit(object):
-    """
-    Information for a hit that is read from the dat file.
-    """
-    def __init__(self, first_column, last_column):
-        self.first_column = first_column
-        self.last_column = last_column
 
 
 class DatFile(object):
@@ -72,7 +63,7 @@ class DatFile(object):
             
             if coarse_index not in self.hits:
                 self.hits[coarse_index] = []
-            self.hits[coarse_index].append(DatHit(first_column, last_column))
+            self.hits[coarse_index].append(HitInfo(first_column, last_column))
 
             
     def h5_filename(self):

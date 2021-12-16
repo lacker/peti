@@ -12,7 +12,7 @@ import random
 
 from config import xp
 import h5_file
-import hit_group
+import hit_info
 import scanner
 from util import to_numpy
 
@@ -27,20 +27,20 @@ def show_hit(hit, chunk):
     
 def show_hits(hits, chunk):
     for i, hit in list(enumerate(hits))[:100]:
-        print(f"hit {i} / {len(hits)}. {len(hit)} windows.")
+        print(f"hit {i} / {len(hits)}.")
         show_hit(hit, chunk)
 
 
-def show_fit(fitter, mask=False):
+def show_fit(hit, mask=False):
     if mask:
-        region = to_numpy(1 - fitter.mask.astype(float))
+        region = to_numpy(1 - hit.mask.astype(float))
     else:
-        region = to_numpy(fitter.data)
+        region = to_numpy(hit.fit_data)
     end_y = region.shape[0] - 1
-    end_x = fitter.start_index + fitter.drift_rate * end_y
+    end_x = hit.start + hit.drift_rate * end_y
     fig, ax = plt.subplots(figsize=region.shape)
     ax.imshow(region, rasterized=True, interpolation="nearest", cmap="viridis")
-    ax.plot((fitter.start_index, end_x), (0, end_y), "r", lw=2)
+    ax.plot((hit.start, end_x), (0, end_y), "r", lw=2)
     display(fig)
     plt.close()
         
@@ -78,8 +78,8 @@ def diff_chunk(chunk, baseline=None, experiment=None):
     else:
         exp = experiment
     
-    base_not_exp = hit_group.diff(base, exp)
-    exp_not_base = hit_group.diff(exp, base)
+    base_not_exp = hit_info.diff(base, exp)
+    exp_not_base = hit_info.diff(exp, base)
 
     if not base_not_exp and not exp_not_base:
         print("baseline and experiment are identical")

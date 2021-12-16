@@ -11,7 +11,7 @@ import time
 
 from config import xp
 from h5_file import H5File
-from hit_group import group_hit_windows
+from hit_info import group_hit_windows
 from hit_map import HitMap
 
 def calculate_window_mean(array, window_size):
@@ -149,7 +149,7 @@ def find_hit_windows(mask):
 
 def find_hits(chunk, experiment=False):
     """
-    Returns a list of HitGroup objects.
+    Returns a list of HitInfo objects.
     """
     calc = WindowCalculator(chunk, 30)
     pixel_snr = calc.pixel_snr()
@@ -164,8 +164,8 @@ def find_hits(chunk, experiment=False):
     mask = (pixel_snr > pixel_thresh) | (two_pixel_snr > two_pixel_thresh)
 
     hit_windows = find_hit_windows(mask)            
-    groups = group_hit_windows(hit_windows)
-    return [g for g in groups if len(g) > 2]
+    hits = group_hit_windows(hit_windows, chunk)
+    return hits
         
 
 def scan(h5_filename):
