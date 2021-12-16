@@ -47,7 +47,7 @@ class HitInfo(object):
         self.mask stores which points are modeled by noise.
         self.mean, self.std store the noise model.
         self.area is the number of pixels in the signal
-        self.signal is the strength of the signal, measured in standard deviations above the mean.
+        self.snr is the strength of the signal, measured in standard deviations above the mean.
         self.start is the index the signal begins at, relative to fit_data.
         self.mse is the mean squared error (horizontal distance) from the fit line, measured in pixels.
         """
@@ -89,12 +89,13 @@ class HitInfo(object):
         self.area = len(row_indexes)
         inputs = xp.vstack([row_indexes, xp.ones(len(row_indexes))]).T
         solution, residual, _, _ = xp.linalg.lstsq(inputs, col_indexes, rcond=None)
-        self.drift_rate, self.start = solution
+        self.drift_rate, fit_start = solution
+        self.start = self.fit_offset + self.data.offset + fit_start.item()
         self.mse = residual.item() / self.area
 
-        # Calculate signal strength by taking one pixel per row
+        # Calculate SNR by taking one pixel per row
         unnormalized_signal = xp.amax(self.fit_data, axis=1).mean().item()
-        self.signal = (unnormalized_signal - self.mean) / self.std
+        self.snr = (unnormalized_signal - self.mean) / self.std
 
         
     def __str__(self):

@@ -37,10 +37,11 @@ def show_fit(hit, mask=False):
     else:
         region = to_numpy(hit.fit_data)
     end_y = region.shape[0] - 1
-    end_x = hit.start + hit.drift_rate * end_y
+    start_index = hit.start - hit.data.offset - hit.fit_offset
+    end_x = start_index + hit.drift_rate * end_y
     fig, ax = plt.subplots(figsize=region.shape)
     ax.imshow(region, rasterized=True, interpolation="nearest", cmap="viridis")
-    ax.plot((hit.start, end_x), (0, end_y), "r", lw=2)
+    ax.plot((start_index, end_x), (0, end_y), "r", lw=2)
     display(fig)
     plt.close()
         
