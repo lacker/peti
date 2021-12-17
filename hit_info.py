@@ -9,20 +9,33 @@ from config import MARGIN, xp
 
 
 class HitInfo(object):
-    def __init__(self, first_column, last_column, hit_windows=None, data=None):
+    def __init__(self, first_column, last_column, hit_windows=None, data=None, offset=None):
         """
         first_column and last_column are the only mandatory elements of a hit.
         hit_windows is a list of (row, first_column, last_column) tuples.
         data is a DataRange for the coarse channel, to which the indexes are relative.
+        offset is the amount the indexes are offset, if we don't have data.
         """
         self.first_column = first_column
         self.last_column = last_column
         self.hit_windows = hit_windows
-        self.data = data
 
+        if data is not None and offset is not None:
+            raise RuntimeError("you cannot provide both data and offset to HitInfo")
+
+        self.data = data
+        if self.data is None:
+            self.offset = offset
+        else:
+            self.offset = self.data.offset
+        
 
     @staticmethod
     def from_plain(plain):
+        raise RuntimeError("TODO")
+
+
+    def to_plain(self):
         raise RuntimeError("TODO")
         
         
@@ -103,7 +116,25 @@ class HitInfo(object):
         unnormalized_signal = xp.amax(self.fit_data, axis=1).mean().item()
         self.snr = (unnormalized_signal - self.mean) / self.std
 
-        
+
+    def can_join(self, other):
+        """
+        Whether self is followed by other closely enough to join them.
+        This is ordered, self should come before other.
+        A precondition for calling is that these two hits are in the same coarse channel.
+        """
+        assert self.offset == other.offset
+        return self.last_column + MARGIN >= other.first_column
+
+
+    def join(self, other):
+        """
+        Join two HitInfo for which can_join is true.
+        """
+        assert self.can_join(other)
+        return HitInfo(self.first_column, other.last_column, offset=self.offset)
+    
+    
     def __str__(self):
         return f"hit({self.first_column}, {self.last_column})"
 

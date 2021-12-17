@@ -15,6 +15,8 @@ DIR = os.path.dirname(os.path.realpath(__file__))
 
 DAT_LIST = os.path.join(DIR, "dats.txt")
 
+COARSE_CHANNEL_SIZE = 2**20
+
 
 class DatFile(object):
     """
@@ -63,7 +65,8 @@ class DatFile(object):
             
             if coarse_index not in self.hits:
                 self.hits[coarse_index] = []
-            self.hits[coarse_index].append(HitInfo(first_column, last_column))
+            offset = coarse_index * COARSE_CHANNEL_SIZE
+            self.hits[coarse_index].append(HitInfo(first_column, last_column, offset=offset))
 
             
     def h5_filename(self):
@@ -107,14 +110,14 @@ class DatFile(object):
 
     def get_hits(self, coarse_index):
         """
-        Returns a list of DatHit objects for the given coarse index.
-        Combines hits within MARGIN.
+        Returns a list of HitInfo objects for the given coarse index.
+        Combines nearby hits.
         """
         assert self.has_hits()
         answer = []
         for hit in self.hits[coarse_index]:
-            if answer and answer[-1].last_column + MARGIN >= hit.first_column:
-                answer[-1] = DatHit(answer[-1].first_column, hit.last_column)
+            if answer and answer[-1].can_join(hit):
+                answer[-1] = answer[-1].join(hit)
             else:
                 answer.append(hit)
         return answer
