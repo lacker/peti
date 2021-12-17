@@ -13,7 +13,7 @@ class HitInfo(object):
         """
         first_column and last_column are the only mandatory elements of a hit.
         hit_windows is a list of (row, first_column, last_column) tuples.
-        chunk is a DataRange for the coarse channel, to which the indexes are relative.
+        data is a DataRange for the coarse channel, to which the indexes are relative.
         """
         self.first_column = first_column
         self.last_column = last_column
@@ -21,6 +21,11 @@ class HitInfo(object):
         self.data = data
 
 
+    @staticmethod
+    def from_plain(plain):
+        raise RuntimeError("TODO")
+        
+        
     @staticmethod
     def from_hit_windows(hit_windows, data):
         """
@@ -46,10 +51,11 @@ class HitInfo(object):
         self.fit_offset stores the offset of fit_data on the coarse channel
         self.mask stores which points are modeled by noise.
         self.mean, self.std store the noise model.
+        self.drift_start is the index the signal begins at, relative to fit_data.
+        self.drift_rate is the rate of drift, measured in horizontal pixels per vertical pixels.
+        self.mse is the mean squared error (horizontal distance) from the fit line, measured in pixels.
         self.area is the number of pixels in the signal
         self.snr is the strength of the signal, measured in standard deviations above the mean.
-        self.start is the index the signal begins at, relative to fit_data.
-        self.mse is the mean squared error (horizontal distance) from the fit line, measured in pixels.
         """
         assert self.hit_windows is not None
         self.fit_offset = max(self.first_column - MARGIN, 0)
@@ -90,7 +96,7 @@ class HitInfo(object):
         inputs = xp.vstack([row_indexes, xp.ones(len(row_indexes))]).T
         solution, residual, _, _ = xp.linalg.lstsq(inputs, col_indexes, rcond=None)
         self.drift_rate, fit_start = solution
-        self.start = self.fit_offset + self.data.offset + fit_start.item()
+        self.drift_start = self.fit_offset + self.data.offset + fit_start.item()
         self.mse = residual.item() / self.area
 
         # Calculate SNR by taking one pixel per row

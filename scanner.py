@@ -174,7 +174,7 @@ def scan(h5_filename):
     """
     file_start_time = time.time()
     f = H5File(h5_filename)
-    hitmap = HitMap(h5_filename, f.num_chunks)
+    hitmap = HitMap.from_h5_file(f)
     print("loaded", h5_filename, flush=True)
     for i in range(f.num_chunks):
         start_time = time.time()
@@ -183,17 +183,18 @@ def scan(h5_filename):
         hits = find_hits(chunk)
         end_time = time.time()
         elapsed = end_time - start_time
-        hitmap.add_hits(i, hits)
+        hitmap.add_hits(hits)
         print(f"scanned chunk {i} in {elapsed:.1f}s, finding {len(hits)} hits", flush=True)
     file_end_time = time.time()
-    file_elapsed = end_time = start_time
+    file_elapsed = file_end_time - file_start_time
     print(f"scan of {h5_filename} complete")
-    print(f"total scan time {elapsed:.1f}s, finding {hitmap.num_hits()} hits", flush=True)    
+    print(f"total scan time {file_elapsed:.1f}s, finding {len(hitmap.hits)} hits", flush=True)    
     return hitmap
 
 
 if __name__ == "__main__":
     filename = sys.argv[1]
     hitmap = scan(filename)
-    hitmap.save()
+    out = hitmap.save()
+    print("wrote hitmap to", out)
 

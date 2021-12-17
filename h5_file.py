@@ -25,6 +25,9 @@ class H5File(object):
         assert self.width % self.num_chunks == 0
         self.chunk_size = self.width // self.num_chunks
 
+    def get_attr(self, attr_name):
+        return self.data.attrs[attr_name].item()
+        
     def get_chunk(self, i):
         assert 0 <= i < self.num_chunks
         offset = i * self.chunk_size
@@ -41,6 +44,8 @@ class H5File(object):
         chunk = self.get_chunk(i)
         return chunk.get_range(begin - chunk.offset, end - chunk.offset)
 
+    def filename(self):
+        return self.h5file.filename
 
 class ChunkFetcher(object):
     def __init__(self, seed=None):
