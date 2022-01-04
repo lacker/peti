@@ -11,7 +11,8 @@ from config import MARGIN, xp
 class HitInfo(object):
     def __init__(self, first_column, last_column, hit_windows=None, data=None, offset=None):
         """
-        first_column and last_column are the only mandatory elements of a hit.
+        first_column and last_column are relative indexes. They are the only mandatory elements of a hit.
+        After the HitInfo is constructed, self.offset will describe what these column indexes are relative to.
         hit_windows is a list of (row, first_column, last_column) tuples.
         data is a DataRange for the coarse channel, to which the indexes are relative.
         offset is the amount the indexes are offset, if we don't have data.
@@ -25,6 +26,7 @@ class HitInfo(object):
 
         self.data = data
         if self.data is None:
+            assert offset is not None
             self.offset = offset
         else:
             self.offset = self.data.offset
@@ -32,11 +34,25 @@ class HitInfo(object):
 
     @staticmethod
     def from_plain(plain):
-        raise RuntimeError("TODO")
+        info = HitInfo(plain["first_column"], plain["last_column"], offset=0)
+        for field in ["drift_rate", "drift_start", "snr", "mse", "area"]:
+            setattr(info, field, plain[field])
+        return info
 
 
     def to_plain(self):
-        raise RuntimeError("TODO")
+        """
+        Plain conversion is straightforward, except that first_column and last_column are stored without
+        any offset, so we have to convert.
+        """
+        plain = {
+            "first_column": self.offset + self.first_column,
+            "last_column": self.offset + self.last_column,
+        }
+        for field in ["drift_rate", "drift_start", "snr", "mse", "area"]:
+            if hasattr(self, field):
+                plain[field] = getattr(self, field)
+        return plain
         
         
     @staticmethod
@@ -64,7 +80,7 @@ class HitInfo(object):
         self.fit_offset stores the offset of fit_data on the coarse channel
         self.mask stores which points are modeled by noise.
         self.mean, self.std store the noise model.
-        self.drift_start is the index the signal begins at, relative to fit_data.
+        self.drift_start is the index the signal begins at, relative to the whole input file.
         self.drift_rate is the rate of drift, measured in horizontal pixels per vertical pixels.
         self.mse is the mean squared error (horizontal distance) from the fit line, measured in pixels.
         self.area is the number of pixels in the signal
