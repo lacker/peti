@@ -17,7 +17,34 @@ from config import H5_ROOT
 
 HIT_MAP_ROOT = os.path.expanduser("~/hitmaps")
 
-SCHEMA = {
+HIT_INFO_SCHEMA = {
+    "type": "record",
+    "name": "HitInfo",
+    "fields": [{
+        "name": "first_column",
+        "type": "long",
+    }, {
+        "name": "last_column",
+        "type": "long",
+    }, {
+        "name": "drift_rate",
+        "type": "float",
+    }, {
+        "name": "drift_start",
+        "type": "double",
+    }, {
+        "name": "snr",
+        "type": "float",
+    }, {
+        "name": "mse",
+        "type": "float",
+    }, {
+        "name", "area",
+        "type": "float",
+    }]
+}
+
+HIT_MAP_SCHEMA = {
     "namespace": "peti",
     "type": "record",
     "name": "HitMap",
@@ -30,10 +57,16 @@ SCHEMA = {
     }, {
         "name": "coarse_channels",
         "type": "int",
+    }, {
+        "name": "hits",
+        "type": {
+            "type": "array",
+            "items": HIT_INFO_SCHEMA,
+        },
     }]
 }
 
-PARSED_SCHEMA = parse_schema(SCHEMA)
+PARSED_SCHEMA = parse_schema(HIT_MAP_SCHEMA)
 
 
 def front_replace(s, old, new):
@@ -88,11 +121,13 @@ class HitMap(object):
             "h5_filename": self.h5_filename,
             "fch1": self.fch1,
             "coarse_channels": self.coarse_channels,
+            "hits": [hit.to_plain() for hit in self.hits],
         }
         
     @staticmethod
     def from_plain(plain):
-        return HitMap(plain["h5_filename"], plain["fch1"], plain["coarse_channels"])
+        hits = [HitInfo.from_plain(p) for p in plain["hits"]]
+        return HitMap(plain["h5_filename"], plain["fch1"], plain["coarse_channels"], hits=hits)
 
     def save(self):
         """
