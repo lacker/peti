@@ -14,6 +14,7 @@ import sys
 from fastavro import parse_schema, reader, writer
 
 from config import H5_ROOT
+from hit_info import HitInfo
 
 HIT_MAP_ROOT = os.path.expanduser("~/hitmaps")
 
@@ -22,10 +23,10 @@ HIT_INFO_SCHEMA = {
     "name": "HitInfo",
     "fields": [{
         "name": "first_column",
-        "type": "long",
+        "type": "int",
     }, {
         "name": "last_column",
-        "type": "long",
+        "type": "int",
     }, {
         "name": "drift_rate",
         "type": "float",
@@ -57,6 +58,18 @@ HIT_MAP_SCHEMA = {
     }, {
         "name": "foff",
         "type": "float",
+    }, {
+        "name": "nchans",
+        "type": "int",
+    }, {
+        "name": "tstart",
+        "type": "float",
+    }, {
+        "name": "tsamp",
+        "type": "float",
+    }, {
+        "name": "nsamples",
+        "type": "int",
     }, {
         "name": "coarse_channels",
         "type": "int",
