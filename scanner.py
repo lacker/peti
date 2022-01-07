@@ -181,6 +181,8 @@ def scan(h5_filename):
         chunk = f.get_chunk(i)
         mid_time = time.time()
         hits = find_hits(chunk)
+        for hit in hits:
+            hit.linear_fit()
         end_time = time.time()
         elapsed = end_time - start_time
         hitmap.add_hits(hits)

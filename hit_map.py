@@ -39,7 +39,7 @@ HIT_INFO_SCHEMA = {
         "name": "mse",
         "type": "float",
     }, {
-        "name", "area",
+        "name": "area",
         "type": "float",
     }]
 }
@@ -53,6 +53,9 @@ HIT_MAP_SCHEMA = {
         "type": "string",
     }, {
         "name": "fch1",
+        "type": "float",
+    }, {
+        "name": "foff",
         "type": "float",
     }, {
         "name": "coarse_channels",
@@ -86,29 +89,43 @@ def make_hit_map_filename(h5_filename):
     return front_replace(h5_filename, H5_ROOT, HIT_MAP_ROOT)[:-3] + ".hitmap"
 
 
-
 class HitMap(object):
-    def __init__(self, h5_filename, fch1, coarse_channels, hits=None):
-        """
-        h5_filename is the full path to the h5 file this hitmap is storing data for.
-        coarse_channels is the total number of coarse channels in this file.
-        hits is an optional list of HitInfo objects.
-        If hits is not provided, this makes an empty HitMap.
-        """
-        self.h5_filename = h5_filename
-        self.fch1 = fch1
-        self.coarse_channels = coarse_channels
-        if hits is None:
-            self.hits = []
-        else:
-            self.hits = hits
+    """
+    To construct a HitMap, use from_h5_file or from_plain, rather than the default constructor.
+    
+    A HitMap should have the following fields:
 
+    h5_filename: the full path to the h5 file this hitmap is storing data for.
+    hits: a list of HitInfo objects.
+
+    Additional metadata fields track the bldw format:
+    fch1
+    foff
+    nchans
+    tstart
+    tsamp
+    nsamples
+    coarse_channels
+    """
+    normal_fields = ["h5_filename", "fch1", "foff", "nchans", "tstart", "tsamp", "nsamples", "coarse_channels"]
+    
     @staticmethod
     def from_h5_file(f):
         """
         Create a HitMap with no hits but the metadata from a provided h5 file.
         """
-        return HitMap(f.filename(), f.get_attr("fch1"), f.num_chunks)
+        hitmap = HitMap()
+        hitmap.h5_filename = f.filename()
+        hitmap.hits = []
+        hitmap.fch1 = f.get_attr("fch1")
+        hitmap.foff = f.get_attr("foff")
+        hitmap.nchans = f.get_attr("nchans")
+        hitmap.tstart = f.get_attr("tstart")
+        hitmap.tsamp = f.get_attr("tsamp")
+        hitmap.nsamples = f.data.shape[0]
+        hitmap.coarse_channels = f.num_chunks
+        return hitmap
+
             
     def add_hits(self, new_hits):
         """
@@ -117,17 +134,20 @@ class HitMap(object):
         self.hits.extend(new_hits)
 
     def to_plain(self):
-        return {
-            "h5_filename": self.h5_filename,
-            "fch1": self.fch1,
-            "coarse_channels": self.coarse_channels,
+        plain = {
             "hits": [hit.to_plain() for hit in self.hits],
         }
+        for field in HitMap.normal_fields:
+            plain[field] = getattr(self, field)
+        return plain
         
     @staticmethod
     def from_plain(plain):
-        hits = [HitInfo.from_plain(p) for p in plain["hits"]]
-        return HitMap(plain["h5_filename"], plain["fch1"], plain["coarse_channels"], hits=hits)
+        hitmap = HitMap()
+        hitmap.hits = [HitInfo.from_plain(p) for p in plain["hits"]]
+        for field in HitMap.normal_fields:
+            setattr(hitmap, field, plain[field])
+        return hitmap
 
     def save(self):
         """
