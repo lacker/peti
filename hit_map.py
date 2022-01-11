@@ -141,10 +141,13 @@ class HitMap(object):
         return hitmap
 
             
-    def add_hits(self, new_hits):
+    def add_hits(self, new_hits, strip_data_reference=False):
         """
         hits is a list of HitInfo objects.
         """
+        if strip_data_reference:
+            for h in new_hits:
+                h.data = None
         self.hits.extend(new_hits)
 
     def to_plain(self):
@@ -191,19 +194,25 @@ class HitMap(object):
             return HitMap.from_plain(records[0])
 
 
-    def chunks(self):
+    def populate_h5_file(self):
         if not hasattr(self, "h5_file"):
             self.h5_file = H5File(self.h5_filename)
-        return sorted(list(set(hit.first_column // self.h5_file.chunk_size for hit in self.hits)))
+
         
+    def chunks(self):
+        self.populate_h5_file()
+        return sorted(list(set(hit.first_column // self.h5_file.chunk_size for hit in self.hits)))
+
+    def get_chunk(self, i):
+        self.populate_h5_file()
+        return self.h5_file.get_chunk(i)
         
     def hits_for_chunk(self, chunk_index, attach_chunk=True):
         """
         Returns the hits for the chunk with the given number.
         Attaches the chunk to the hits if it is not attached already.
         """
-        if not hasattr(self, "h5_file"):
-            self.h5_file = H5File(self.h5_filename)
+        self.populate_h5_file()
 
         # Find the hits that are in this chunk
         chunk_begin = self.h5_file.chunk_size * chunk_index

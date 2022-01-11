@@ -19,6 +19,4 @@ for line in open(json_filename):
     for h5_filename in info["filenames"]:
         if os.path.exists(make_hit_map_filename(h5_filename)):
             continue
-        hitmap = scanner.scan(h5_filename)
-        out = hitmap.save()
-        print("wrote hitmap to", out)
+        scanner.scan(h5_filename)

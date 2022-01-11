@@ -16,6 +16,18 @@ import hit_info
 import scanner
 from util import to_numpy
 
+
+def show_event(event):
+    print(event.hits)
+    first_column = event.first_column()
+    last_column = event.last_column()
+    for chunk in event.chunks:
+        region = chunk.display_region(first_column, last_column)
+        fig, ax = plt.subplots(figsize=region.shape)
+        ax.imshow(region, rasterized=True, interpolation="nearest", cmap="viridis")
+        display(fig)
+        plt.close()
+        
     
 def show_hit(hit, chunk=None):
     if chunk is None:

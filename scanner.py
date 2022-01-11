@@ -185,18 +185,21 @@ def scan(h5_filename):
             hit.linear_fit()
         end_time = time.time()
         elapsed = end_time - start_time
-        hitmap.add_hits(hits)
+        hitmap.add_hits(hits, strip_data_reference=True)
         print(f"scanned chunk {i} in {elapsed:.1f}s, finding {len(hits)} hits", flush=True)
+
+        
     file_end_time = time.time()
     file_elapsed = file_end_time - file_start_time
     print(f"scan of {h5_filename} complete")
     print(f"total scan time {file_elapsed:.1f}s, finding {len(hitmap.hits)} hits", flush=True)    
-    return hitmap
+    out = hitmap.save()
+    print("wrote hitmap to", out)
 
-
+    
 if __name__ == "__main__":
     filename = sys.argv[1]
     hitmap = scan(filename)
-    out = hitmap.save()
-    print("wrote hitmap to", out)
+
+
 
