@@ -126,7 +126,10 @@ class HitInfo(object):
         solution, residual, _, _ = xp.linalg.lstsq(inputs, col_indexes, rcond=None)
         self.drift_rate, fit_start = solution
         self.drift_start = self.fit_offset + self.data.offset + fit_start.item()
-        self.mse = residual.item() / self.area
+        if len(residual) == 0:
+            self.mse = 0
+        else:
+            self.mse = residual.item() / self.area
 
         # Calculate SNR by taking one pixel per row
         unnormalized_signal = xp.amax(self.fit_data, axis=1).mean().item()
