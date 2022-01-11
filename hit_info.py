@@ -30,8 +30,20 @@ class HitInfo(object):
             self.offset = offset
         else:
             self.offset = self.data.offset
-        
 
+
+    def attach_chunk(self, chunk):
+        assert self.data is None
+        assert self.offset == 0
+        if not chunk.contains_range(self.first_column, self.last_column + 1):
+            raise RuntimeError(f"{chunk.offset=} {len(chunk)=} {self.first_column=} {self.last_column=}")
+        assert self.hit_windows is None
+        self.data = chunk
+        self.offset = chunk.offset
+        self.first_column -= self.offset
+        self.last_column -= self.offset
+
+        
     @staticmethod
     def from_plain(plain):
         info = HitInfo(plain["first_column"], plain["last_column"], offset=0)

@@ -17,7 +17,9 @@ import scanner
 from util import to_numpy
 
     
-def show_hit(hit, chunk):
+def show_hit(hit, chunk=None):
+    if chunk is None:
+        chunk = hit.data
     region = chunk.display_region(hit.first_column, hit.last_column)
     fig, ax = plt.subplots(figsize=region.shape)
     ax.imshow(region, rasterized=True, interpolation="nearest", cmap="viridis")
@@ -25,10 +27,10 @@ def show_hit(hit, chunk):
     plt.close()
 
     
-def show_hits(hits, chunk):
+def show_hits(hits, chunk=None):
     for i, hit in list(enumerate(hits))[:100]:
         print(f"hit {i} / {len(hits)}.")
-        show_hit(hit, chunk)
+        show_hit(hit, chunk=chunk)
 
 
 def show_fit(hit, mask=False):

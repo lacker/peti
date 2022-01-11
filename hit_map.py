@@ -14,6 +14,7 @@ import sys
 from fastavro import parse_schema, reader, writer
 
 from config import H5_ROOT
+from h5_file import H5File
 from hit_info import HitInfo
 
 HIT_MAP_ROOT = os.path.expanduser("~/hitmaps")
@@ -178,11 +179,45 @@ class HitMap(object):
 
     @staticmethod
     def load(filename):
+        """
+        Loads an existing hitmap.
+        Can take either the h5 filename or the hitmap filename.
+        """
+        if filename.endswith("h5"):
+            filename = make_hit_map_filename(filename)
         with open(filename, "rb") as infile:
             records = list(reader(infile))
             assert len(records) == 1
             return HitMap.from_plain(records[0])
 
+
+    def chunks(self):
+        if not hasattr(self, "h5_file"):
+            self.h5_file = H5File(self.h5_filename)
+        return sorted(list(set(hit.first_column // self.h5_file.chunk_size for hit in self.hits)))
+        
+        
+    def hits_for_chunk(self, chunk_index, attach_chunk=True):
+        """
+        Returns the hits for the chunk with the given number.
+        Attaches the chunk to the hits if it is not attached already.
+        """
+        if not hasattr(self, "h5_file"):
+            self.h5_file = H5File(self.h5_filename)
+
+        # Find the hits that are in this chunk
+        chunk_begin = self.h5_file.chunk_size * chunk_index
+        chunk_end = chunk_begin + self.h5_file.chunk_size
+        hits = [h for h in self.hits if chunk_begin <= h.first_column and h.last_column < chunk_end]
+        if not attach_chunk or all(hit.data for hit in hits):
+            return hits
+
+        chunk = self.h5_file.get_chunk(chunk_index)
+        for hit in hits:
+            hit.attach_chunk(chunk)
+        return hits
+
+    
     def __repr__(self):
         plain = self.to_plain()
         return json.dumps(plain, indent=2)

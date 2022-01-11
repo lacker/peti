@@ -16,7 +16,15 @@ class DataRange(object):
 
     def __len__(self):
         return self.array.shape[1]
-        
+
+    def contains_range(self, begin, end):
+        """
+        Whether this chunk contains the [begin, end) range of indices.
+        begin and end are relative to the underlying file.
+        """
+        assert begin <= end
+        return self.offset <= begin and end <= self.offset + len(self)
+    
     def get_range(self, begin, end, strict=True):
         """
         begin and end are relative to this DataRange object.
