@@ -168,33 +168,45 @@ def find_hits(chunk, experiment=False):
     return hits
         
 
-def scan(h5_filename):
-    """
-    Create a HitMap for the given h5 file.
-    """
-    file_start_time = time.time()
-    f = H5File(h5_filename)
-    hitmap = HitMap.from_h5_file(f)
-    print("loaded", h5_filename, flush=True)
-    for i in range(f.num_chunks):
+class Scanner(object):
+    def __init__(self, h5_filename):
+        self.h5_file = H5File(h5_filename)
+        self.hitmap = HitMap.from_h5_file(self.h5_file)
+        print("loaded", h5_filename, flush=True)
+
+    def num_chunks(self):
+        return self.h5_file.num_chunks
+        
+    def scan_chunk(self, i):
         start_time = time.time()
-        chunk = f.get_chunk(i)
+        chunk = self.h5_file.get_chunk(i)
         mid_time = time.time()
         hits = find_hits(chunk)
         for hit in hits:
             hit.linear_fit()
         end_time = time.time()
         elapsed = end_time - start_time
-        hitmap.add_hits(hits, strip_data_reference=True)
+        self.hitmap.add_hits(hits, strip_data_reference=True)
         print(f"scanned chunk {i} in {elapsed:.1f}s, finding {len(hits)} hits", flush=True)
+    
+    def scan_all(self):
+        for i in range(self.num_chunks()):
+            self.scan_chunk(i)
+
+    def save(self):
+        out = hitmap.save()
+        print("wrote hitmap to", out)
 
         
+def scan(h5_filename):
+    file_start_time = time.time()
+    scanner = Scanner(h5_filename)
     file_end_time = time.time()
     file_elapsed = file_end_time - file_start_time
+    scanner.scan_all()
     print(f"scan of {h5_filename} complete")
     print(f"total scan time {file_elapsed:.1f}s, finding {len(hitmap.hits)} hits", flush=True)    
-    out = hitmap.save()
-    print("wrote hitmap to", out)
+    scanner.save()
 
     
 if __name__ == "__main__":
