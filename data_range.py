@@ -2,7 +2,7 @@
 The DataRange represents a part of an underlying H5 file.
 """
 
-from config import DISPLAY_WIDTH
+from config import DISPLAY_WIDTH, MARGIN
 from util import to_numpy
 
 class DataRange(object):
@@ -40,8 +40,9 @@ class DataRange(object):
         first and last are relative to this DataRange object.
         Always returns a numpy array, not a cupy array.
         """
+        display_width = max(DISPLAY_WIDTH, last - first + 2 * MARGIN)
         center = (first + last) / 2
-        ideal_display_offset = center - (DISPLAY_WIDTH - 1) / 2
+        ideal_display_offset = center - (display_width - 1) / 2
         display_offset = int(ideal_display_offset)
-        region = self.array[:, display_offset : display_offset + DISPLAY_WIDTH]
+        region = self.array[:, display_offset : display_offset + display_width]
         return to_numpy(region)
