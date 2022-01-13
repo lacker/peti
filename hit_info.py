@@ -6,6 +6,8 @@ we have in these different cases is somewhat different.
 """
 
 import cupy as cp
+import numpy as np
+
 from config import MARGIN
 
 
@@ -89,7 +91,7 @@ class HitInfo(object):
         on hits where we have the original hit windows.
 
         This stores extra data on the hit.
-        self.fit_data stores the data we are modeling, as a cupy array.
+        self.fit_data stores the data we are modeling, as a *numpy* array.
         self.fit_offset stores the offset of fit_data on the coarse channel
         self.mask stores which points are modeled by noise.
         self.mean, self.std store the noise model.
@@ -101,10 +103,10 @@ class HitInfo(object):
         """
         assert self.hit_windows is not None
         self.fit_offset = max(self.first_column - MARGIN, 0)
-        self.fit_data = self.data.array[:, self.fit_offset : self.last_column + MARGIN + 1]
+        self.fit_data = cp.asnumpy(self.data.array[:, self.fit_offset : self.last_column + MARGIN + 1])
         
         # Start by masking out the strongest pixel for each hit window
-        self.mask = cp.full(self.fit_data.shape, True, dtype=bool)
+        self.mask = np.full(self.fit_data.shape, True, dtype=bool)
         for row, first_column, last_column in self.hit_windows:
             begin = first_column - self.fit_offset
             end = last_column - self.fit_offset + 1
@@ -117,7 +119,7 @@ class HitInfo(object):
             self.mean = in_bounds.mean().item()
             self.std = in_bounds.std().item()
             threshold = self.mean + alpha * self.std
-            self.mask = cp.logical_and(self.mask, self.fit_data < threshold)
+            self.mask = np.logical_and(self.mask, self.fit_data < threshold)
             new_in_bounds = self.fit_data[self.mask]
 
             if new_in_bounds.size < in_bounds.size:
@@ -133,11 +135,12 @@ class HitInfo(object):
             raise ValueError(f"coding error")
 
         # Do a linear regression
-        row_indexes, col_indexes = cp.where(cp.logical_not(self.mask))
+        row_indexes, col_indexes = np.where(np.logical_not(self.mask))
         self.area = len(row_indexes)
-        inputs = cp.vstack([row_indexes, cp.ones(len(row_indexes))]).T
-        solution, residual, _, _ = cp.linalg.lstsq(inputs, col_indexes, rcond=None)
-        self.drift_rate, fit_start = solution
+        inputs = np.vstack([row_indexes, np.ones(len(row_indexes))]).T
+        solution, residual, _, _ = np.linalg.lstsq(inputs, col_indexes, rcond=None)
+        drift_rate_array, fit_start = solution
+        self.drift_rate = drift_rate_array.item()
         self.drift_start = self.fit_offset + self.data.offset + fit_start.item()
         if len(residual) == 0:
             self.mse = 0
@@ -145,7 +148,7 @@ class HitInfo(object):
             self.mse = residual.item() / self.area
 
         # Calculate SNR by taking one pixel per row
-        unnormalized_signal = cp.amax(self.fit_data, axis=1).mean().item()
+        unnormalized_signal = np.amax(self.fit_data, axis=1).mean().item()
         self.snr = (unnormalized_signal - self.mean) / self.std
 
 

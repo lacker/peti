@@ -2,6 +2,8 @@
 The DataRange represents a part of an underlying H5 file.
 """
 
+import cupy as cp
+
 from config import DISPLAY_WIDTH, MARGIN
 
 class DataRange(object):
@@ -44,4 +46,4 @@ class DataRange(object):
         ideal_display_offset = center - (display_width - 1) / 2
         display_offset = int(ideal_display_offset)
         region = self.array[:, display_offset : display_offset + display_width]
-        return cp.as_numpy(region)
+        return cp.asnumpy(region)

@@ -7,8 +7,6 @@ import matplotlib
 matplotlib.rc("figure", max_open_warning=0)
 from matplotlib import pyplot as plt
 
-import cupy as cp
-
 from IPython.display import display
 import random
 
@@ -47,9 +45,9 @@ def show_hits(hits, chunk=None):
 
 def show_fit(hit, mask=False):
     if mask:
-        region = cp.as_numpy(1 - hit.mask.astype(float))
+        region = 1 - hit.mask.astype(float)
     else:
-        region = cp.as_numpy(hit.fit_data)
+        region = hit.fit_data
     end_y = region.shape[0] - 1
     start_index = hit.drift_start - hit.data.offset - hit.fit_offset
     end_x = start_index + hit.drift_rate * end_y

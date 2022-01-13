@@ -188,25 +188,27 @@ class Scanner(object):
         end_time = time.time()
         elapsed = end_time - start_time
         self.hitmap.add_hits(hits, strip_data_reference=True)
-        print(f"scanned chunk {i} in {elapsed:.1f}s, finding {len(hits)} hits", flush=True)
-    
+        gb = cp.get_default_memory_pool().total_bytes() / 10**9
+        print(f"scanned chunk {i} in {elapsed:.1f}s, GPU mem {gb:.2f}G, finding {len(hits)} hits", flush=True)
+        
     def scan_all(self):
         for i in range(self.num_chunks()):
             self.scan_chunk(i)
 
     def save(self):
-        out = hitmap.save()
+        out = self.hitmap.save()
         print("wrote hitmap to", out)
 
         
 def scan(h5_filename):
     file_start_time = time.time()
     scanner = Scanner(h5_filename)
+    scanner.scan_all()
     file_end_time = time.time()
     file_elapsed = file_end_time - file_start_time
-    scanner.scan_all()
     print(f"scan of {h5_filename} complete")
-    print(f"total scan time {file_elapsed:.1f}s, finding {len(hitmap.hits)} hits", flush=True)    
+    print(f"total scan time {file_elapsed:.1f}s")
+    print(f"found {len(scanner.hitmap.hits)} hits", flush=True)    
     scanner.save()
 
     
