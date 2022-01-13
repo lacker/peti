@@ -6,10 +6,10 @@ Utility functions for opening and doing things with h5 files
 import hdf5plugin
 import h5py
 
+import cupy as cp
 import os
 import random
 
-from config import xp
 from data_range import DataRange
 
 # This directory
@@ -31,7 +31,7 @@ class H5File(object):
     def get_chunk(self, i):
         assert 0 <= i < self.num_chunks
         offset = i * self.chunk_size
-        array = xp.array(self.data[:, 0, offset : offset + self.chunk_size])
+        array = cp.array(self.data[:, 0, offset : offset + self.chunk_size])
 
         # Blur out the exact middle, that's the DC spike
         midpoint = self.chunk_size // 2

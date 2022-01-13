@@ -7,14 +7,14 @@ import matplotlib
 matplotlib.rc("figure", max_open_warning=0)
 from matplotlib import pyplot as plt
 
+import cupy as cp
+
 from IPython.display import display
 import random
 
-from config import xp
 import h5_file
 import hit_info
 import scanner
-from util import to_numpy
 
 
 def show_event(event):
@@ -47,9 +47,9 @@ def show_hits(hits, chunk=None):
 
 def show_fit(hit, mask=False):
     if mask:
-        region = to_numpy(1 - hit.mask.astype(float))
+        region = cp.as_numpy(1 - hit.mask.astype(float))
     else:
-        region = to_numpy(hit.fit_data)
+        region = cp.as_numpy(hit.fit_data)
     end_y = region.shape[0] - 1
     start_index = hit.drift_start - hit.data.offset - hit.fit_offset
     end_x = start_index + hit.drift_rate * end_y

@@ -9,7 +9,8 @@ import random
 import sys
 import time
 
-from config import xp
+import cupy as cp
+
 from h5_file import H5File
 from hit_info import group_hit_windows
 from hit_map import HitMap
@@ -21,8 +22,8 @@ def calculate_window_mean(array, window_size):
     Output is (window_size - 1) fewer columns than array.
     """
     assert window_size >= 1
-    sums = xp.empty_like(array, dtype="float64")
-    xp.cumsum(array, axis=1, out=sums)
+    sums = cp.empty_like(array, dtype="float64")
+    cp.cumsum(array, axis=1, out=sums)
     sums[:, window_size:] -= sums[:, :-window_size]
     return sums[:, window_size-1:] / window_size
 
@@ -41,7 +42,7 @@ def calculate_window_stats(array, window_size):
     ex2 = calculate_window_mean(array * array, window_size)
     # Variance = E[X^2] - E[X]^2
     variance = ex2 - (mean * mean)
-    std_dev = xp.maximum(xp.sqrt(variance), 0.01)
+    std_dev = cp.maximum(cp.sqrt(variance), 0.01)
     return mean, std_dev
     
 
@@ -65,7 +66,7 @@ def apply_max_window(vector, window_size):
     # and thus the two subwindows overlap a bit.
     shift = window_size - subwindow_size
 
-    xp.maximum(vector[:-shift], vector[shift:], out=vector[:-shift])
+    cp.maximum(vector[:-shift], vector[shift:], out=vector[:-shift])
     
 
 class WindowCalculator(object):
@@ -87,14 +88,14 @@ class WindowCalculator(object):
         The snr of a pixel is the higher of its left and right snr.
         """
         # left_snr is the snr calculated with noise using a window to the left
-        left_snr = xp.zeros_like(self.array)
+        left_snr = cp.zeros_like(self.array)
         left_snr[:, self.window_size:] = (self.array[:, self.window_size:] - self.means[:, :-1]) / self.devs[:, :-1]
 
         # right_snr is the snr calculated with noise using a window to the right
-        right_snr = xp.zeros_like(self.array)
+        right_snr = cp.zeros_like(self.array)
         right_snr[:, :-self.window_size] = (self.array[:, :-self.window_size] - self.means[:, 1:]) / self.devs[:, 1:]
 
-        output = xp.maximum(left_snr, right_snr)
+        output = cp.maximum(left_snr, right_snr)
         return output
 
     def two_pixel_snr(self):
@@ -107,18 +108,18 @@ class WindowCalculator(object):
 
         # left_snr is the snr for the pixel pair indexed with (i, i+1) calculated with a noise window to the left.
         # thus the first window_size columns, and the last column, are zeros.
-        left_snr = xp.zeros_like(self.array)
+        left_snr = cp.zeros_like(self.array)
         left_snr[:, self.window_size:-1] = (signal[:, self.window_size:] - self.means[:, :-2]) / self.devs[:, :-2]
 
         # right_snr is the snr for the pixel pair indexed with (i, i+1) calculated with a noise window to the right.
         # thus the last (window_size+1) columns are zeros.
-        right_snr = xp.zeros_like(self.array)
+        right_snr = cp.zeros_like(self.array)
         right_snr[:, :-(self.window_size+1)] = (signal[:, :-self.window_size] - self.means[:, 2:]) / self.devs[:, 2:]
 
         # Each pixel has four ways to get its best score: as the left or right member of the pair, and with a left or
         # right window.
-        output = xp.maximum(left_snr, right_snr)
-        xp.maximum(output[:, :-1], output[:, 1:], out=output[:, 1:])
+        output = cp.maximum(left_snr, right_snr)
+        cp.maximum(output[:, :-1], output[:, 1:], out=output[:, 1:])
         return output
 
     
@@ -130,7 +131,7 @@ def find_hit_windows(mask):
       array[row, first_column : (last_column + 1)]
     mask is a boolean array of which spots to count as a hit.
     """
-    rows, cols = xp.where(mask)
+    rows, cols = cp.where(mask)
 
     # Group pixel hits into adjacent sequences
     hit_windows = []

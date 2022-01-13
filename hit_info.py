@@ -5,7 +5,8 @@ The hit could come from different sources - a scanning algorithm, deserializing 
 we have in these different cases is somewhat different.
 """
 
-from config import MARGIN, xp
+import cupy as cp
+from config import MARGIN
 
 
 class HitInfo(object):
@@ -103,7 +104,7 @@ class HitInfo(object):
         self.fit_data = self.data.array[:, self.fit_offset : self.last_column + MARGIN + 1]
         
         # Start by masking out the strongest pixel for each hit window
-        self.mask = xp.full(self.fit_data.shape, True, dtype=bool)
+        self.mask = cp.full(self.fit_data.shape, True, dtype=bool)
         for row, first_column, last_column in self.hit_windows:
             begin = first_column - self.fit_offset
             end = last_column - self.fit_offset + 1
@@ -116,7 +117,7 @@ class HitInfo(object):
             self.mean = in_bounds.mean().item()
             self.std = in_bounds.std().item()
             threshold = self.mean + alpha * self.std
-            self.mask = xp.logical_and(self.mask, self.fit_data < threshold)
+            self.mask = cp.logical_and(self.mask, self.fit_data < threshold)
             new_in_bounds = self.fit_data[self.mask]
 
             if new_in_bounds.size < in_bounds.size:
@@ -132,10 +133,10 @@ class HitInfo(object):
             raise ValueError(f"coding error")
 
         # Do a linear regression
-        row_indexes, col_indexes = xp.where(xp.logical_not(self.mask))
+        row_indexes, col_indexes = cp.where(cp.logical_not(self.mask))
         self.area = len(row_indexes)
-        inputs = xp.vstack([row_indexes, xp.ones(len(row_indexes))]).T
-        solution, residual, _, _ = xp.linalg.lstsq(inputs, col_indexes, rcond=None)
+        inputs = cp.vstack([row_indexes, cp.ones(len(row_indexes))]).T
+        solution, residual, _, _ = cp.linalg.lstsq(inputs, col_indexes, rcond=None)
         self.drift_rate, fit_start = solution
         self.drift_start = self.fit_offset + self.data.offset + fit_start.item()
         if len(residual) == 0:
@@ -144,7 +145,7 @@ class HitInfo(object):
             self.mse = residual.item() / self.area
 
         # Calculate SNR by taking one pixel per row
-        unnormalized_signal = xp.amax(self.fit_data, axis=1).mean().item()
+        unnormalized_signal = cp.amax(self.fit_data, axis=1).mean().item()
         self.snr = (unnormalized_signal - self.mean) / self.std
 
 

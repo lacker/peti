@@ -3,7 +3,6 @@ The DataRange represents a part of an underlying H5 file.
 """
 
 from config import DISPLAY_WIDTH, MARGIN
-from util import to_numpy
 
 class DataRange(object):
     def __init__(self, h5_file, offset, array):
@@ -45,4 +44,4 @@ class DataRange(object):
         ideal_display_offset = center - (display_width - 1) / 2
         display_offset = int(ideal_display_offset)
         region = self.array[:, display_offset : display_offset + display_width]
-        return to_numpy(region)
+        return cp.as_numpy(region)
