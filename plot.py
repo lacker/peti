@@ -17,6 +17,7 @@ import scanner
 
 def show_event(event):
     print(event.hits)
+    event.populate_chunks()
     first_column = event.first_column()
     last_column = event.last_column()
     for chunk in event.chunks:

@@ -7,22 +7,32 @@ from config import MARGIN
 from scanner import Scanner
 
 class Event(object):
-    def __init__(self, hits, chunks):
+    def __init__(self, hits, chunk_index, hit_maps=None):
         """
-        hits and chunks must be parallel.
-        The hits are each attached to their parallel chunk.
         Since an event may correspond to no hit at all in a particular input, the hits list can have a None.
         It can't be all None though.
+        If hitmaps are provided, they must be parallel to hits. There must be a hitmap for each entry even
+        if the corresponding hit is None.
         There cannot be multiple hits per chunk.
         """
         self.hits = hits
-        self.chunks = chunks
+        self.chunk_index = chunk_index
+        self.hit_maps = hit_maps
+
+        # Chunks will be lazily populated
+        self.chunks = None
 
     def first_column(self):
         return min(h.first_column for h in self.hits if h)
 
     def last_column(self):
         return max(h.last_column for h in self.hits if h)
+
+    def populate_chunks(self):
+        if self.chunks:
+            return
+        assert self.hit_maps
+        self.chunks = [hit_map.get_chunk(self.chunk_index) for hit_map in self.hit_maps]
     
     @staticmethod
     def find_events(hit_maps, chunk_index=None):
@@ -34,6 +44,7 @@ class Event(object):
             for chunk_index in range(hit_maps[0].coarse_channels):
                 for event in Event.find_events(hit_maps, chunk_index=chunk_index):
                     yield event
+            return
 
         # Entries in labeled_hits are
         # (hit_map_index, hit)
@@ -74,14 +85,12 @@ class Event(object):
             return
 
         # Construct events for this coarse channel
-        chunks = [hit_map.get_chunk(chunk_index) for hit_map in hit_maps]
         for group in groups:
             hits = [None] * len(hit_maps)
             for (index, hit) in group:
-                hit.attach_chunk(chunks[index])
                 hits[index] = hit
 
-            yield Event(hits, chunks)
+            yield Event(hits, chunk_index, hit_maps=hit_maps)
 
     @staticmethod
     def scan_cadence(filenames):
