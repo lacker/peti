@@ -150,6 +150,9 @@ class HitMap(object):
                 h.data = None
         self.hits.extend(new_hits)
 
+    def chunk_size(self):
+        return self.nchans / self.coarse_channels
+        
     def to_plain(self):
         plain = {
             "hits": [hit.to_plain() for hit in self.hits],
@@ -206,7 +209,11 @@ class HitMap(object):
     def get_chunk(self, i):
         self.populate_h5_file()
         return self.h5_file.get_chunk(i)
+
+    def frequency_for_absolute_index(self, i):
+        return self.fch1 + self.foff * i
         
+    
     def hits_for_chunk(self, chunk_index, attach_chunk=True):
         """
         Returns the hits for the chunk with the given number.

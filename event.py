@@ -28,6 +28,23 @@ class Event(object):
     def last_column(self):
         return max(h.last_column for h in self.hits if h)
 
+    def frequency_range(self):
+        """
+        Returns (first_freq, last_freq) that corresponds to the first and last column.
+        """
+        first_col = self.first_column()
+        last_col = self.last_column()
+        for hit_map in self.hit_maps:
+            if hit_map is None:
+                continue
+            first_index = self.chunk_index * hit_map.chunk_size() + self.first_column()
+            last_index = self.chunk_index * hit_map.chunk_size() + self.last_column()
+            first_freq = hit_map.fch1 + first_index * hit_map.foff
+            last_freq = hit_map.fch1 + last_index * hit_map.foff
+            return (first_freq, last_freq)
+            
+        raise RuntimeError("all hit maps are None")
+    
     def populate_chunks(self):
         if self.chunks:
             return
