@@ -10,6 +10,33 @@ import numpy as np
 
 from config import MARGIN
 
+HIT_INFO_SCHEMA = {
+    "type": "record",
+    "name": "HitInfo",
+    "fields": [{
+        "name": "first_column",
+        "type": "int",
+    }, {
+        "name": "last_column",
+        "type": "int",
+    }, {
+        "name": "drift_rate",
+        "type": "float",
+    }, {
+        "name": "drift_start",
+        "type": "double",
+    }, {
+        "name": "snr",
+        "type": "float",
+    }, {
+        "name": "mse",
+        "type": "float",
+    }, {
+        "name": "area",
+        "type": "float",
+    }]
+}
+
 
 class HitInfo(object):
     def __init__(self, first_column, last_column, hit_windows=None, data=None, offset=None):
@@ -26,7 +53,9 @@ class HitInfo(object):
 
         if data is not None and offset is not None:
             raise RuntimeError("you cannot provide both data and offset to HitInfo")
-
+        if data is None and offset is None:
+            raise RuntimeError("you must provide either data or offset to HitInfo")
+        
         self.data = data
         if self.data is None:
             assert offset is not None
@@ -48,8 +77,11 @@ class HitInfo(object):
 
         
     @staticmethod
-    def from_plain(plain):
-        info = HitInfo(plain["first_column"], plain["last_column"], offset=0)
+    def from_plain(plain, chunk_size):
+        absolute_first_column = plain["first_column"]
+        first_column = absolute_first_column % chunk_size
+        offset = absolute_first_column - offset
+        info = HitInfo(first_column, plain["last_column"] - offset, offset=offset)
         for field in ["drift_rate", "drift_start", "snr", "mse", "area"]:
             setattr(info, field, plain[field])
         return info

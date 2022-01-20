@@ -15,36 +15,9 @@ from fastavro import parse_schema, reader, writer
 
 from config import H5_ROOT
 from h5_file import H5File
-from hit_info import HitInfo
+from hit_info import HitInfo, HIT_INFO_SCHEMA
 
 HIT_MAP_ROOT = os.path.expanduser("~/hitmaps")
-
-HIT_INFO_SCHEMA = {
-    "type": "record",
-    "name": "HitInfo",
-    "fields": [{
-        "name": "first_column",
-        "type": "int",
-    }, {
-        "name": "last_column",
-        "type": "int",
-    }, {
-        "name": "drift_rate",
-        "type": "float",
-    }, {
-        "name": "drift_start",
-        "type": "double",
-    }, {
-        "name": "snr",
-        "type": "float",
-    }, {
-        "name": "mse",
-        "type": "float",
-    }, {
-        "name": "area",
-        "type": "float",
-    }]
-}
 
 HIT_MAP_SCHEMA = {
     "namespace": "peti",
@@ -151,7 +124,7 @@ class HitMap(object):
         self.hits.extend(new_hits)
 
     def chunk_size(self):
-        return self.nchans / self.coarse_channels
+        return self.nchans // self.coarse_channels
         
     def to_plain(self):
         plain = {
@@ -164,9 +137,10 @@ class HitMap(object):
     @staticmethod
     def from_plain(plain):
         hitmap = HitMap()
-        hitmap.hits = [HitInfo.from_plain(p) for p in plain["hits"]]
         for field in HitMap.normal_fields:
             setattr(hitmap, field, plain[field])
+        chunk_size = hitmap.chunk_size()
+        hitmap.hits = [HitInfo.from_plain(p, chunk_size) for p in plain["hits"]]
         return hitmap
 
     def save(self):
