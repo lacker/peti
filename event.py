@@ -7,17 +7,26 @@ from config import MARGIN
 from scanner import Scanner
 
 class Event(object):
-    def __init__(self, hits, coarse_channel, hit_maps):
+    def __init__(self, hits, coarse_channel, hit_maps=None):
         """
         Since an event may correspond to no hit at all in a particular input, the hits list can have a None.
         It can't be all None though.
-        hit_maps must be parallel to hits. There must be a hitmap for each entry even if the corresponding hit is None.
+        If hit_maps is provided, it must be parallel to hits.
+        So there must be a hitmap for each entry even if the corresponding hit is None.
         There cannot be multiple hits per file in a single event.
         """
         self.hits = hits
         self.coarse_channel = coarse_channel
         self.hit_maps = hit_maps
 
+        # Populate metadata from the hitmaps
+        if hit_maps is not None:
+            self.h5_filenames = [hit_map.h5_filename for hit_map in hit_maps]
+            self.fch1 = hit_maps[0].fch1
+            self.foff = hit_maps[0].foff
+            self.nchans = hit_maps[0].nchans
+            self.coarse_channels = hit_maps[0].coarse_channels
+        
         # Chunks will be lazily populated
         self.chunks = None
 
@@ -31,24 +40,18 @@ class Event(object):
         """
         Returns (first_freq, last_freq) that corresponds to the first and last column.
         """
-        first_col = self.first_column()
-        last_col = self.last_column()
-        for hit_map in self.hit_maps:
-            if hit_map is None:
-                continue
-            first_index = self.coarse_channel * hit_map.chunk_size() + self.first_column()
-            last_index = self.coarse_channel * hit_map.chunk_size() + self.last_column()
-            first_freq = hit_map.fch1 + first_index * hit_map.foff
-            last_freq = hit_map.fch1 + last_index * hit_map.foff
-            return (first_freq, last_freq)
-            
-        raise RuntimeError("all hit maps are None")
-
+        coarse_channel_size = self.nchans // self.coarse_channels
+        
+        first_index = self.coarse_channel * coarse_channel_size + self.first_column()
+        last_index = self.coarse_channel * coarse_channel_size + self.last_column()
+        first_freq = hit_map.fch1 + first_index * hit_map.foff
+        last_freq = hit_map.fch1 + last_index * hit_map.foff
+        return (first_freq, last_freq)
     
     def populate_chunks(self):
         if self.chunks:
             return
-        assert self.hit_maps
+        assert self.hit_maps, "Populating chunks requires the hit maps."
         self.chunks = []
         for hit, hit_map in zip(self.hits, self.hit_maps):
             chunk = hit_map.get_chunk(self.coarse_channel)

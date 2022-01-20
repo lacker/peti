@@ -41,8 +41,9 @@ HIT_INFO_SCHEMA = {
 class HitInfo(object):
     def __init__(self, first_column, last_column, hit_windows=None, data=None, offset=None):
         """
-        first_column and last_column are relative indexes. They are the only mandatory elements of a hit.
-        After the HitInfo is constructed, self.offset will describe what these column indexes are relative to.
+        first_column and last_column are indexes relative to their coarse channel.
+        They are the only mandatory elements of a hit.
+        self.offset is the offset of the coarse channel.
         hit_windows is a list of (row, first_column, last_column) tuples.
         data is a DataRange for the coarse channel, to which the indexes are relative.
         offset is the amount the indexes are offset, if we don't have data.
@@ -77,9 +78,13 @@ class HitInfo(object):
 
         
     @staticmethod
-    def from_plain(plain, chunk_size):
+    def from_plain(plain, coarse_channel_size):
+        """
+        We need to know the coarse channel size because HitInfo objects are relative to their coarse channel, while
+        hit data is stored relative to the overall file.
+        """
         absolute_first_column = plain["first_column"]
-        first_column = absolute_first_column % chunk_size
+        first_column = absolute_first_column % coarse_channel_size
         offset = absolute_first_column - offset
         info = HitInfo(first_column, plain["last_column"] - offset, offset=offset)
         for field in ["drift_rate", "drift_start", "snr", "mse", "area"]:
@@ -90,7 +95,7 @@ class HitInfo(object):
     def to_plain(self):
         """
         Plain conversion is straightforward, except that first_column and last_column are stored without
-        any offset, so we have to convert.
+        offset, so we have to convert.
         """
         plain = {
             "first_column": self.offset + self.first_column,
