@@ -188,21 +188,21 @@ class HitMap(object):
         return self.fch1 + self.foff * i
         
     
-    def hits_for_chunk(self, chunk_index, attach_chunk=True):
+    def hits_for_coarse_channel(self, coarse_channel, attach_chunk=True):
         """
-        Returns the hits for the chunk with the given number.
+        Returns the hits for the coarse channel with the given index.
         Attaches the chunk to the hits if it is not attached already.
         """
         self.populate_h5_file()
 
         # Find the hits that are in this chunk
-        chunk_begin = self.h5_file.chunk_size * chunk_index
+        chunk_begin = self.h5_file.chunk_size * coarse_channel
         chunk_end = chunk_begin + self.h5_file.chunk_size
-        hits = [h for h in self.hits if chunk_begin <= h.first_column and h.last_column < chunk_end]
+        hits = [h for h in self.hits if h.coarse_channel == coarse_channel]
         if not attach_chunk or all(hit.data for hit in hits):
             return hits
 
-        chunk = self.h5_file.get_chunk(chunk_index)
+        chunk = self.h5_file.get_chunk(coarse_channel)
         for hit in hits:
             hit.attach_chunk(chunk)
         return hits

@@ -18,7 +18,7 @@ class Event(object):
         self.hits = hits
         self.coarse_channel = coarse_channel
         self.hit_maps = hit_maps
-
+        
         # Populate metadata from the hitmaps
         if hit_maps is not None:
             self.h5_filenames = [hit_map.h5_filename for hit_map in hit_maps]
@@ -27,7 +27,8 @@ class Event(object):
             self.nchans = hit_maps[0].nchans
             self.coarse_channels = hit_maps[0].coarse_channels
         
-        # Chunks will be lazily populated
+        # Lazily populated
+        self.plot_filename = None
         self.chunks = None
 
     def first_column(self):
@@ -44,8 +45,8 @@ class Event(object):
         
         first_index = self.coarse_channel * coarse_channel_size + self.first_column()
         last_index = self.coarse_channel * coarse_channel_size + self.last_column()
-        first_freq = hit_map.fch1 + first_index * hit_map.foff
-        last_freq = hit_map.fch1 + last_index * hit_map.foff
+        first_freq = self.fch1 + first_index * self.foff
+        last_freq = self.fch1 + last_index * self.foff
         return (first_freq, last_freq)
     
     def populate_chunks(self):
@@ -75,7 +76,7 @@ class Event(object):
         # where the hit_map_index tracks which hit map the hit came from.
         labeled_hits = []
         for hit_map_index, hit_map in enumerate(hit_maps):
-            hits = hit_map.hits_for_chunk(coarse_channel, attach_chunk=False)
+            hits = hit_map.hits_for_coarse_channel(coarse_channel, attach_chunk=False)
             for hit in hits:
                 labeled_hits.append((hit_map_index, hit))
 
@@ -113,7 +114,6 @@ class Event(object):
             hits = [None] * len(hit_maps)
             for (index, hit) in group:
                 hits[index] = hit
-
             yield Event(hits, coarse_channel, hit_maps=hit_maps)
 
     @staticmethod

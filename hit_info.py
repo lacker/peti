@@ -39,42 +39,31 @@ HIT_INFO_SCHEMA = {
 
 
 class HitInfo(object):
-    def __init__(self, first_column, last_column, hit_windows=None, data=None, offset=None):
+    def __init__(self, coarse_channel, coarse_channel_size, first_column, last_column, hit_windows=None, data=None):
         """
+        required data:
         first_column and last_column are indexes relative to their coarse channel.
-        They are the only mandatory elements of a hit.
-        self.offset is the offset of the coarse channel.
+        coarse_channel is the index of the coarse channel, and coarse_channel_size is the size of each coarse channel for this file.
+
+        optional data:
         hit_windows is a list of (row, first_column, last_column) tuples.
         data is a DataRange for the coarse channel, to which the indexes are relative.
-        offset is the amount the indexes are offset, if we don't have data.
         """
+        self.coarse_channel = coarse_channel
+        self.coarse_channel_size = coarse_channel_size
+        self.offset = self.coarse_channel * self.coarse_channel_size
         self.first_column = first_column
         self.last_column = last_column
         self.hit_windows = hit_windows
-
-        if data is not None and offset is not None:
-            raise RuntimeError("you cannot provide both data and offset to HitInfo")
-        if data is None and offset is None:
-            raise RuntimeError("you must provide either data or offset to HitInfo")
-        
         self.data = data
-        if self.data is None:
-            assert offset is not None
-            self.offset = offset
-        else:
-            self.offset = self.data.offset
+        if self.data is not None:
+            assert self.data.offset == self.offset            
 
-
+            
     def attach_chunk(self, chunk):
         assert self.data is None
-        assert self.offset == 0
-        if not chunk.contains_range(self.first_column, self.last_column + 1):
-            raise RuntimeError(f"{chunk.offset=} {len(chunk)=} {self.first_column=} {self.last_column=}")
-        assert self.hit_windows is None
-        self.data = chunk
-        self.offset = chunk.offset
-        self.first_column -= self.offset
-        self.last_column -= self.offset
+        assert self.offset == chunk.offset
+        self.data = offset
 
         
     @staticmethod
@@ -85,8 +74,10 @@ class HitInfo(object):
         """
         absolute_first_column = plain["first_column"]
         first_column = absolute_first_column % coarse_channel_size
-        offset = absolute_first_column - offset
-        info = HitInfo(first_column, plain["last_column"] - offset, offset=offset)
+        offset = absolute_first_column - first_column
+        coarse_channel = offset // coarse_channel_size
+        info = HitInfo(coarse_channel, coarse_channel_size, first_column, plain["last_column"] - offset)
+
         for field in ["drift_rate", "drift_start", "snr", "mse", "area"]:
             setattr(info, field, plain[field])
         return info
@@ -108,14 +99,14 @@ class HitInfo(object):
         
         
     @staticmethod
-    def from_hit_windows(hit_windows, data):
+    def from_hit_windows(hit_windows, coarse_channel, data):
         """
         Construct a HitInfo from a list of hit windows.
         A hit window is a (row, first_column, last_column) tuple.
         """
         first_column = min(first_column for _, first_column, _ in hit_windows)
         last_column = max(last_column for _, _, last_column in hit_windows)
-        return HitInfo(first_column, last_column, hit_windows=hit_windows, data=data)
+        return HitInfo(coarse_channel, len(data), first_column, last_column, hit_windows=hit_windows, data=data)
     
 
     def linear_fit(self, alpha=3.5):
@@ -195,6 +186,8 @@ class HitInfo(object):
         This is ordered, self should come before other.
         A precondition for calling is that these two hits are in the same coarse channel.
         """
+        assert self.coarse_channel == other.coarse_channel
+        assert self.coarse_channel_size == other.coarse_channel_size
         assert self.offset == other.offset
         return self.last_column + MARGIN >= other.first_column
 
@@ -204,7 +197,7 @@ class HitInfo(object):
         Join two HitInfo for which can_join is true.
         """
         assert self.can_join(other)
-        return HitInfo(self.first_column, other.last_column, offset=self.offset)
+        return HitInfo(self.coarse_channel, self.coarse_channel_size, self.first_column, other.last_column)
     
     
     def __str__(self):
@@ -214,7 +207,7 @@ class HitInfo(object):
         return str(self)
 
 
-def group_hit_windows(hit_windows, data):
+def group_hit_windows(hit_windows, coarse_channel, data):
     """
     Return a list of HitInfo objects.
     A hit window is a (row, first_column, last_column) tuple.
@@ -240,13 +233,13 @@ def group_hit_windows(hit_windows, data):
             pending_last_column = max(pending_last_column, last_column)
         else:
             # This hit goes into its own group
-            groups.append(HitInfo.from_hit_windows(pending_group, data))
+            groups.append(HitInfo.from_hit_windows(pending_group, coarse_channel, data))
             pending_group = [hit]
             pending_last_column = last_column
 
     if pending_group is not None:
         # Turn the last pending group into a full group
-        groups.append(HitInfo.from_hit_windows(pending_group, data))
+        groups.append(HitInfo.from_hit_windows(pending_group, coarse_channel, data))
 
     return [group for group in groups if len(group.hit_windows) > 2]
     

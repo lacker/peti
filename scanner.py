@@ -148,7 +148,7 @@ def find_hit_windows(mask):
     return hit_windows
 
 
-def find_hits(chunk, experiment=False):
+def find_hits(coarse_channel, chunk, experiment=False):
     """
     Returns a list of HitInfo objects.
     """
@@ -165,7 +165,7 @@ def find_hits(chunk, experiment=False):
     mask = (pixel_snr > pixel_thresh) | (two_pixel_snr > two_pixel_thresh)
 
     hit_windows = find_hit_windows(mask)            
-    hits = group_hit_windows(hit_windows, chunk)
+    hits = group_hit_windows(hit_windows, coarse_channel, chunk)
     return hits
         
 
@@ -182,7 +182,7 @@ class Scanner(object):
         start_time = time.time()
         chunk = self.h5_file.get_chunk(i)
         mid_time = time.time()
-        hits = find_hits(chunk)
+        hits = find_hits(i, chunk)
         for hit in hits:
             hit.linear_fit()
         end_time = time.time()
