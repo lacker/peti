@@ -81,3 +81,6 @@ class ChunkFetcher(object):
             answer = predicate(chunk)
             if answer:
                 return (answer, filename, i, chunk)
+
+
+    

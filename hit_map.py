@@ -13,11 +13,10 @@ import sys
 
 from fastavro import parse_schema, reader, writer
 
-from config import H5_ROOT
+from config import make_hit_map_filename
 from h5_file import H5File
 from hit_info import HitInfo, HIT_INFO_SCHEMA
 
-HIT_MAP_ROOT = os.path.expanduser("~/hitmaps")
 
 HIT_MAP_SCHEMA = {
     "namespace": "peti",
@@ -57,23 +56,6 @@ HIT_MAP_SCHEMA = {
 }
 
 PARSED_SCHEMA = parse_schema(HIT_MAP_SCHEMA)
-
-
-def front_replace(s, old, new):
-    """
-    Return a copy of s with old replace with new in precisely one place, the front.
-    s must start with old.
-    """
-    assert s.startswith(old)
-    return s.replace(old, new, 1)
-
-
-def make_hit_map_filename(h5_filename):
-    """
-    The hitmap filename corresponding to an h5 filename
-    """
-    assert h5_filename.endswith(".h5")
-    return front_replace(h5_filename, H5_ROOT, HIT_MAP_ROOT)[:-3] + ".hitmap"
 
 
 class HitMap(object):

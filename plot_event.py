@@ -5,6 +5,8 @@ Plotting-specific code for events.
 import matplotlib
 from matplotlib import pyplot as plt
 
+import os
+
 
 def show_event(event):
     print(event.hits)
@@ -30,3 +32,9 @@ def show_event(event):
     plt.close()
         
     
+def save_event_image(event):
+    image_filename = event.image_filename()
+    dirname = os.path.dirname(image_filename)
+    Path(dirname).mkdir(parents=True, exist_ok=True)
+
+    raise RuntimeError("TODO: implement")

@@ -6,6 +6,7 @@ Information for an event candidate.
 from config import MARGIN
 from scanner import Scanner
 
+
 class Event(object):
     def __init__(self, hits, coarse_channel, hit_maps=None):
         """
@@ -28,7 +29,6 @@ class Event(object):
             self.coarse_channels = hit_maps[0].coarse_channels
         
         # Lazily populated
-        self.plot_filename = None
         self.chunks = None
 
     def first_column(self):
@@ -37,6 +37,9 @@ class Event(object):
     def last_column(self):
         return max(h.last_column for h in self.hits if h)
 
+    def image_filename(self):
+        return make_png_filename(self.h5_filenames[0])
+    
     def frequency_range(self):
         """
         Returns (first_freq, last_freq) that corresponds to the first and last column.
