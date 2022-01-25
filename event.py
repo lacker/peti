@@ -3,7 +3,7 @@
 Information for an event candidate.
 """
 
-from config import MARGIN
+from config import MARGIN, make_plot_filename
 from scanner import Scanner
 
 
@@ -32,22 +32,30 @@ class Event(object):
         self.chunks = None
 
     def first_column(self):
+        """
+        Relative to the coarse channel.
+        """
         return min(h.first_column for h in self.hits if h)
 
     def last_column(self):
+        """
+        Relative to the coarse channel.
+        """
         return max(h.last_column for h in self.hits if h)
 
-    def image_filename(self):
-        return make_png_filename(self.h5_filenames[0])
+    def offset(self):
+        coarse_channel_size = self.nchans // self.coarse_channels
+        return self.coarse_channel * coarse_channel_size
+    
+    def plot_filename(self):
+        return make_plot_filename(self.h5_filenames[0], self.offset() + self.first_column())
     
     def frequency_range(self):
         """
         Returns (first_freq, last_freq) that corresponds to the first and last column.
         """
-        coarse_channel_size = self.nchans // self.coarse_channels
-        
-        first_index = self.coarse_channel * coarse_channel_size + self.first_column()
-        last_index = self.coarse_channel * coarse_channel_size + self.last_column()
+        first_index = self.offset() + self.first_column()
+        last_index = self.offset() + self.last_column()
         first_freq = self.fch1 + first_index * self.foff
         last_freq = self.fch1 + last_index * self.foff
         return (first_freq, last_freq)

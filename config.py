@@ -38,6 +38,6 @@ def make_relative_filename(h5_filename, root_dir, new_suffix):
 def make_hit_map_filename(h5_filename):
     return make_relative_filename(h5_filename, HIT_MAP_ROOT, ".hitmap")
 
-def make_png_filename(h5_filename):
-    return make_relative_filename(h5_filename, IMAGE_ROOT, ".png")
+def make_plot_filename(h5_filename, index):
+    return make_relative_filename(h5_filename, IMAGE_ROOT, f".{index}.png")
 

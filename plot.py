@@ -115,3 +115,17 @@ def compare(seed=None, n=10):
         print(f"analyzing chunk {i} of {filename}")
         count += diff_chunk(chunk)
     print("comparison done")
+
+    
+def load_cadences():
+    answer = []
+    for line in open("/home/obs/cadences.json"):
+        info = json.loads(line)
+        filenames = info["filenames"]
+        dirs = [f.split("/")[-2] for f in filenames]
+        if min(dirs) != max(dirs):
+            continue
+        answer.append(filenames)
+    return answer
+
+    
