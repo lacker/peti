@@ -3,6 +3,9 @@
 Information for an event candidate.
 """
 
+from astropy.time import Time
+from datetime import datetime
+
 from config import MARGIN, make_plot_filename
 from scanner import Scanner
 
@@ -23,9 +26,11 @@ class Event(object):
         # Populate metadata from the hitmaps
         if hit_maps is not None:
             self.h5_filenames = [hit_map.h5_filename for hit_map in hit_maps]
+            self.tstarts = [hit_map.tstart for hit_map in hit_maps]
             self.fch1 = hit_maps[0].fch1
             self.foff = hit_maps[0].foff
             self.nchans = hit_maps[0].nchans
+            self.source_name = hit_maps[0].source_name
             self.coarse_channels = hit_maps[0].coarse_channels
         
         # Lazily populated
@@ -43,6 +48,15 @@ class Event(object):
         """
         return max(h.last_column for h in self.hits if h)
 
+    def session(self):
+        """
+        Heuristic. Returns None if it can't figure it out.
+        """
+        for part in self.h5_filenames[0].split("/"):
+            if "GBT" in part:
+                return part
+        return None
+    
     def offset(self):
         coarse_channel_size = self.nchans // self.coarse_channels
         return self.coarse_channel * coarse_channel_size
@@ -69,6 +83,19 @@ class Event(object):
             chunk = hit_map.get_chunk(self.coarse_channel)
             self.chunks.append(chunk)
 
+    def start_times(self):
+        return [datetime.utcfromtimestamp(Time(tstart, format="mjd").unix) for tstart in self.tstarts]
+            
+    def readable_day_range(self):
+        times = self.start_times()
+        first_dt = times[0]
+        last_dt = times[-1]
+        first_phrase = first_dt.strftime("%Y %b ") + str(first_dt.day)
+        if last_dt.day == first_dt.day:
+            return first_phrase
+        if last_dt.month == first_dt.month:
+            return f"{first_phrase}-{last_dt.day}"
+        return f"{first_phrase} - {last_dt.strftime('%b')} {last_dt.day}"
             
     @staticmethod
     def find_events(hit_maps, coarse_channel=None):
@@ -127,10 +154,12 @@ class Event(object):
                 hits[index] = hit
             yield Event(hits, coarse_channel, hit_maps=hit_maps)
 
+            
     @staticmethod
-    def scan_cadence(filenames):
+    def combine_cadence(filenames):
         """
-        Generates events
+        Combines hitmaps for a cadence into events.
+        Returns an iterator for the events.
         """
         scanners = [Scanner(f) for f in filenames]
         hitmaps = [s.hitmap for s in scanners]

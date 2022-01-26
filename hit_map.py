@@ -26,6 +26,9 @@ HIT_MAP_SCHEMA = {
         "name": "h5_filename",
         "type": "string",
     }, {
+        "name": "source_name",
+        "type": "string",
+    }, {
         "name": "fch1",
         "type": "float",
     }, {
@@ -67,7 +70,7 @@ class HitMap(object):
     h5_filename: the full path to the h5 file this hitmap is storing data for.
     hits: a list of HitInfo objects.
 
-    Additional metadata fields track the bldw format:
+    Additional metadata fields track either the bldw format, or if not there, the h5 header format:
     fch1
     foff
     nchans
@@ -75,8 +78,9 @@ class HitMap(object):
     tsamp
     nsamples
     coarse_channels
+    source_name
     """
-    normal_fields = ["h5_filename", "fch1", "foff", "nchans", "tstart", "tsamp", "nsamples", "coarse_channels"]
+    normal_fields = ["h5_filename", "fch1", "foff", "nchans", "tstart", "tsamp", "nsamples", "coarse_channels", "source_name"]
     
     @staticmethod
     def from_h5_file(f):
@@ -91,6 +95,7 @@ class HitMap(object):
         hitmap.nchans = f.get_attr("nchans")
         hitmap.tstart = f.get_attr("tstart")
         hitmap.tsamp = f.get_attr("tsamp")
+        hitmap.source_name = f.get_attr("source_name")
         hitmap.nsamples = f.data.shape[0]
         hitmap.coarse_channels = f.num_chunks
         return hitmap

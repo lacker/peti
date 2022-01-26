@@ -12,6 +12,7 @@ import random
 
 import h5_file
 import hit_info
+import json
 from plot_event import show_event
 import scanner
 

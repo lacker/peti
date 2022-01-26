@@ -26,7 +26,10 @@ class H5File(object):
         self.chunk_size = self.width // self.num_chunks
 
     def get_attr(self, attr_name):
-        return self.data.attrs[attr_name].item()
+        attr = self.data.attrs[attr_name]
+        if type(attr) is str:
+            return attr
+        return attr.item()
         
     def get_chunk(self, i):
         assert 0 <= i < self.num_chunks

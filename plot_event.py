@@ -15,12 +15,12 @@ def make_event_plot(event):
     The figure is left "open" so the caller should call plt.close() when it's done.
     """
     first_freq, last_freq = event.frequency_range()
-    print(f"frequency range: {first_freq:.6f} - {last_freq:.6f}")
+    start_times = event.start_times()
     event.populate_chunks()
     first_column = event.first_column()
     last_column = event.last_column()
     fig, axs = plt.subplots(nrows=len(event.chunks))
-    for i, (ax, chunk) in enumerate(zip(axs, event.chunks)):
+    for i, (ax, chunk, start_time) in enumerate(zip(axs, event.chunks, start_times)):
         region = chunk.display_region(first_column, last_column)
         ax.imshow(region, rasterized=True, interpolation="nearest", cmap="viridis")
         ax.tick_params(axis="both", 
@@ -28,10 +28,42 @@ def make_event_plot(event):
                        left=False,
                        bottom=False,
                        labelleft=False,
-                       labelbottom=False)
+                       labelbottom=False)            
+
+        ax.tick_params(axis="y", left=True, labelleft=True)
+        ax.set_yticks([0])
+        ax.set_yticklabels([start_time.strftime("%H:%M:%S")], fontsize=16)
+        
+        if i == 0:
+            title = f"Cadence with target {event.source_name} on {event.readable_day_range()}"
+            session = event.session()
+            if session:
+                title += f", session {session}"
+            ax.set_title(title, size=24, pad=24)
+            
         if i + 1 == len(event.chunks):
-            pass
-    plt.subplots_adjust(hspace=0)    
+            ax.tick_params(axis="x", bottom=True, labelbottom=True, length=10)
+            width = region.shape[1] - 1
+
+            # Figure out which ticks we want based on steps
+            digits = 4
+            step = 1 / (10 ** digits)
+            freq = int(first_freq / step) * step
+            ticks = []
+            labels = []
+            while freq > last_freq:
+                fraction = (freq - first_freq) / (last_freq - first_freq)
+                ticks.append(fraction * width)
+                if 0.05 < fraction < 0.95:
+                    labels.append(f"%.{digits}f MHz" % freq)
+                else:
+                    labels.append("")
+                freq -= step
+
+            ax.set_xticks(ticks)
+            ax.set_xticklabels(labels, fontsize=16)
+            
+    plt.subplots_adjust(hspace=0)
 
 
 def show_event(event):
