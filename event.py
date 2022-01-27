@@ -36,6 +36,16 @@ class Event(object):
         # Lazily populated
         self.chunks = None
 
+        # For now, the score is purely defined by how much the hits align with the ABACAD pattern.
+        self.score = 0
+        for i, hit in enumerate(self.hits):
+            if hit is None:
+                continue
+            if i % 2 == 0:
+                self.score += 1
+            else:
+                self.score -= 1
+        
     def first_column(self):
         """
         Relative to the coarse channel.
