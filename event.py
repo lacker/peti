@@ -123,22 +123,22 @@ class Event(object):
         # Group up the labeled hits
         groups = []
         current_group = []
-        furthest_column = None
+        plausible_next_column = None
         for index, hit in labeled_hits:
             if not current_group:
                 # Make a new group with only this hit
                 current_group.append((index, hit))
-                furthest_column = hit.last_column
+                plausible_next_column = hit.plausible_next_column()
                 continue
-            if furthest_column + MARGIN >= hit.first_column:
+            if plausible_next_column >= hit.first_column:
                 # Add this hit to the group
                 current_group.append((index, hit))
-                furthest_column = max(furthest_column, hit.last_column)
+                plausible_next_column = max(plausible_next_column, hit.plausible_next_column())
                 continue
             # Make current group into a group and start a new group with this hit
             groups.append(current_group)
             current_group = [(index, hit)]
-            furthest_column = hit.last_column
+            plausible_next_column() = hit.plausible_next_column()
         if current_group:
             groups.append(current_group)
 

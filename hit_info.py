@@ -108,7 +108,14 @@ class HitInfo(object):
         last_column = max(last_column for _, _, last_column in hit_windows)
         return HitInfo(coarse_channel, len(data), first_column, last_column, hit_windows=hit_windows, data=data)
     
-
+    def plausible_next_column(self):
+        """
+        Guess how far after last_column we should look to find the next hit.
+        Returns a single column value.
+        """
+        width = self.last_column - self.first_column
+        return self.last_column + 2 * width + MARGIN
+    
     def linear_fit(self, alpha=3.5):
         """
         Do sigma clipping to fit a Gaussian noise model to this data.
