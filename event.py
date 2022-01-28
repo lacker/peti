@@ -7,8 +7,49 @@ from astropy.time import Time
 from datetime import datetime
 
 from config import MARGIN, make_plot_filename
+from hit_into import HIT_INFO_SCHEMA
 from scanner import Scanner
 
+
+EVENT_SCHEMA = {
+    "type": "record",
+    "name": "Event",
+    "fields": [{
+        "name": "h5_filenames",
+        "type": {
+            "type": "array",
+            "items": "string",
+        },
+    }, {
+        "name": "source_name",
+        "type": "string",
+    }, {
+        "name": "fch1",
+        "type": "float",
+    }, {
+        "name": "foff",
+        "type": "float",
+    }, {
+        "name": "nchans",
+        "type": "int",
+    }, {
+        "name": "tstarts",
+        "type": {
+            "type": "float",
+            "items": "string",
+        },
+    }, {
+        "name": "coarse_channels",
+        "type": "int",
+    }, {
+        "name": "hits",
+        "type": {
+            "type": "array",
+            "items": HIT_INFO_SCHEMA,
+            },
+    }]
+        
+}
 
 class Event(object):
     def __init__(self, hits, coarse_channel, hit_maps=None):
