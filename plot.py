@@ -7,15 +7,29 @@ import matplotlib
 matplotlib.rc("figure", max_open_warning=0)
 from matplotlib import pyplot as plt
 
-from IPython.display import display
+from IPython.display import display, Image
 import random
 
 import h5_file
 import hit_info
 import json
-from plot_event import show_event
+from plot_event import make_event_plot
 import scanner
 
+
+def show_event(event):
+    print(event.hits)
+
+    if event.has_plot_file():
+        filename = event.plot_filename()
+        print("showing plot from file:", filename)
+        return Image(filename)
+    else:
+        print("making fresh plot")
+        make_event_plot(event)
+        plt.show()
+        plt.close()
+        
 
 def show_hit(hit, chunk=None):
     if chunk is None:

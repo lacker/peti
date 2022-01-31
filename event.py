@@ -5,13 +5,17 @@ Information for an event candidate.
 
 from astropy.time import Time
 from datetime import datetime
+import os
+
+from fastavro import parse_schema, reader, writer
 
 from config import MARGIN, make_plot_filename
-from hit_into import HIT_INFO_SCHEMA
+from hit_info import HIT_INFO_SCHEMA
 from scanner import Scanner
 
 
 EVENT_SCHEMA = {
+    "namespace": "peti",
     "type": "record",
     "name": "Event",
     "fields": [{
@@ -45,14 +49,23 @@ EVENT_SCHEMA = {
         "name": "hits",
         "type": {
             "type": "array",
-            "items": HIT_INFO_SCHEMA,
-            },
-    }]
-        
+            "items": ["null", HIT_INFO_SCHEMA],
+        },
+    }]        
 }
 
+EVENT_LIST_SCHEMA = {
+    "type": "array",
+    "items": EVENT_SCHEMA,
+}
+
+PARSED_EVENT_LIST_SCHEMA = parse_schema(EVENT_LIST_SCHEMA)
+
+
 class Event(object):
-    def __init__(self, hits, coarse_channel, hit_maps=None):
+    normal_fields = ["h5_filenames", "source_name", "fch1", "foff", "nchans", "tstarts", "coarse_channels"]
+
+    def __init__(self, hits, hit_maps=None):
         """
         Since an event may correspond to no hit at all in a particular input, the hits list can have a None.
         It can't be all None though.
@@ -61,9 +74,15 @@ class Event(object):
         There cannot be multiple hits per file in a single event.
         """
         self.hits = hits
-        self.coarse_channel = coarse_channel
         self.hit_maps = hit_maps
-        
+
+        for hit in self.hits:
+            if hit is not None:
+                self.coarse_channel = hit.coarse_channel
+                break
+        else:
+            raise RuntimeError("an all-None list of hits was passed to Event creation")
+                
         # Populate metadata from the hitmaps
         if hit_maps is not None:
             self.h5_filenames = [hit_map.h5_filename for hit_map in hit_maps]
@@ -114,6 +133,9 @@ class Event(object):
     
     def plot_filename(self):
         return make_plot_filename(self.h5_filenames[0], self.offset() + self.first_column())
+
+    def has_plot_file(self):
+        return os.path.exists(self.plot_filename())
     
     def frequency_range(self):
         """
@@ -189,7 +211,7 @@ class Event(object):
             # Make current group into a group and start a new group with this hit
             groups.append(current_group)
             current_group = [(index, hit)]
-            plausible_next_column() = hit.plausible_next_column()
+            plausible_next_column = hit.plausible_next_column()
         if current_group:
             groups.append(current_group)
 
@@ -203,9 +225,9 @@ class Event(object):
             hits = [None] * len(hit_maps)
             for (index, hit) in group:
                 hits[index] = hit
-            yield Event(hits, coarse_channel, hit_maps=hit_maps)
+            yield Event(hits, hit_maps=hit_maps)
 
-            
+
     @staticmethod
     def combine_cadence(filenames):
         """
@@ -219,3 +241,50 @@ class Event(object):
                 scanner.scan_chunk(i)
             for event in Event.find_events(hitmaps, coarse_channel=i):
                 yield event
+
+
+    def to_plain(self):
+        hits = []
+        for hit in self.hits:
+            if hit is None:
+                hits.append(None)
+            else:
+                hits.append(hit.to_plain())
+        plain = {"hits": hits}
+        for field in Event.normal_fields:
+            plain[field] = getattr(self, field)
+        return plain
+
+    @staticmethod
+    def from_plain(plain):
+        chunk_size = plain["nchans"] // plain["coarse_channels"]
+        hits = []
+        for plain_hit in plain["hits"]:
+            if plain_hit is None:
+                hits.append(None)
+            else:
+                hits.append(HitInfo.from_plain(plain_hit, chunk_size))
+        event = Event(hits)
+        for field in Event.normal_fields:
+            setattr(event, field, plain[field])
+        return event
+
+    @staticmethod
+    def save_list(self, events, filename):
+        filename = os.path.expanduser(filename)
+        assert filename.endswith(".events")
+        plain = [event.to_plain() for event in events]
+        with open(filename, "wb") as outfile:
+            writer(outfile, PARSED_EVENT_LIST_SCHEMA, plain)
+
+    @staticmethod
+    def load_list(self, filename):
+        """
+        Returns a list of Event objects.
+        """
+        filename = os.path.expanduser(filename)
+        assert filename.endswith(".events")
+        with open(filename, "rb") as infile:
+            return [Event.from_plain(plain) for plain in reader(infile)]
+        
+        

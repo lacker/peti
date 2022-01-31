@@ -66,17 +66,6 @@ def make_event_plot(event):
     plt.subplots_adjust(hspace=0)
 
 
-def show_event(event):
-    """
-    Displays the plot for an event.
-    Call from a notebook.
-    """
-    print(event.hits)
-    make_event_plot(event)
-    plt.show()
-    plt.close()
-
-
 def save_event_plot(event):
     plot_filename = event.plot_filename()
     dirname = os.path.dirname(plot_filename)
