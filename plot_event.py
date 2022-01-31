@@ -19,7 +19,7 @@ def make_event_plot(event):
     event.populate_chunks()
     first_column = event.first_column()
     last_column = event.last_column()
-    fig, axs = plt.subplots(nrows=len(event.chunks))
+    fig, axs = plt.subplots(nrows=len(event.chunks), figsize=(80, 20))
     for i, (ax, chunk, start_time) in enumerate(zip(axs, event.chunks, start_times)):
         region = chunk.display_region(first_column, last_column)
         ax.imshow(region, rasterized=True, interpolation="nearest", cmap="viridis")
@@ -71,6 +71,6 @@ def save_event_plot(event):
     dirname = os.path.dirname(plot_filename)
     Path(dirname).mkdir(parents=True, exist_ok=True)
     make_event_plot(event)
-    plt.savefig(plot_filename)
+    plt.savefig(plot_filename, bbox_inches="tight")
     print("saved plot to", plot_filename)
     plt.close()

@@ -39,8 +39,8 @@ EVENT_SCHEMA = {
     }, {
         "name": "tstarts",
         "type": {
-            "type": "float",
-            "items": "string",
+            "type": "array",
+            "items": "float",
         },
     }, {
         "name": "coarse_channels",
@@ -54,12 +54,7 @@ EVENT_SCHEMA = {
     }]        
 }
 
-EVENT_LIST_SCHEMA = {
-    "type": "array",
-    "items": EVENT_SCHEMA,
-}
-
-PARSED_EVENT_LIST_SCHEMA = parse_schema(EVENT_LIST_SCHEMA)
+PARSED_EVENT_SCHEMA = parse_schema(EVENT_SCHEMA)
 
 
 class Event(object):
@@ -156,6 +151,9 @@ class Event(object):
             chunk = hit_map.get_chunk(self.coarse_channel)
             self.chunks.append(chunk)
 
+    def depopulate_chunks(self):
+        self.chunks = None
+            
     def start_times(self):
         return [datetime.utcfromtimestamp(Time(tstart, format="mjd").unix) for tstart in self.tstarts]
             
@@ -270,12 +268,12 @@ class Event(object):
         return event
 
     @staticmethod
-    def save_list(self, events, filename):
+    def save_list(events, filename):
         filename = os.path.expanduser(filename)
         assert filename.endswith(".events")
         plain = [event.to_plain() for event in events]
         with open(filename, "wb") as outfile:
-            writer(outfile, PARSED_EVENT_LIST_SCHEMA, plain)
+            writer(outfile, PARSED_EVENT_SCHEMA, plain)
 
     @staticmethod
     def load_list(self, filename):

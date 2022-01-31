@@ -22,8 +22,28 @@ elif input_name == "-":
 else:
     raise RuntimeError("bad input name:", input_name)
 
+output_name = sys.argv[2]
+assert output_name.endswith(".events")
+
 for line in instream:
     info = json.loads(line.strip())
     hit_maps = [HitMap.load(f) for f in info["filenames"]]
-    for event in Event.find_events(hit_maps):
-        save_event_plot(event)
+    events = list(Event.find_events(hit_maps))
+    print(len(events), "events found")
+
+    # When we save events we want to do it best-first
+    events.sort(key=lambda e: -e.score)
+    good_events = [e for e in events if e.score > 0]
+    print(len(good_events), "good events found")
+    Event.save_list(good_events, output_name)
+    print("event list saved to", output_name)
+
+    # Image loading for plot generation is faster to do it in frequency order
+    good_events.sort(key=lambda e: e.frequency_range())
+    for event in good_events:
+        if not event.has_plot_file():
+            save_event_plot(event)
+            event.depopulate_chunks()
+            
+    print("for now, we are just processing one cadence")
+    sys.exit(0)
