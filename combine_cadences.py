@@ -33,7 +33,7 @@ for line in instream:
 
     # When we save events we want to do it best-first
     events.sort(key=lambda e: -e.score)
-    good_events = [e for e in events if e.score > 0]
+    good_events = [e for e in events if e.score >= 0]
     print(len(good_events), "good events found")
     Event.save_list(good_events, output_name)
     print("event list saved to", output_name)

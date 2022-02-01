@@ -98,6 +98,11 @@ class HitMap(object):
         hitmap.source_name = f.get_attr("source_name")
         hitmap.nsamples = f.data.shape[0]
         hitmap.coarse_channels = f.num_chunks
+
+        # Hack around h5 files that accidentally stored source_name as bytes
+        if hasattr(hitmap.source_name, "decode"):
+            hitmap.source_name = hitmap.source_name.decode("utf-8")
+
         return hitmap
 
             

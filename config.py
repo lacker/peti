@@ -5,7 +5,10 @@ This file controls global settings.
 import os
 
 # Directory that h5 data is kept under
-H5_ROOT = "/datag/pipeline"
+if os.path.exists("/datag"):
+    H5_ROOT = "/datag/pipeline"
+else:
+    H5_ROOT = "/datax/dibas"
 
 # Standard amount below which to combine hits
 MARGIN = 10

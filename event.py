@@ -10,7 +10,7 @@ import os
 from fastavro import parse_schema, reader, writer
 
 from config import MARGIN, make_plot_filename
-from hit_info import HIT_INFO_SCHEMA
+from hit_info import HitInfo, HIT_INFO_SCHEMA
 from scanner import Scanner
 
 
@@ -220,6 +220,7 @@ class Event(object):
 
         # Construct events for this coarse channel
         for group in groups:
+            print(group)
             hits = [None] * len(hit_maps)
             for (index, hit) in group:
                 hits[index] = hit
@@ -276,7 +277,7 @@ class Event(object):
             writer(outfile, PARSED_EVENT_SCHEMA, plain)
 
     @staticmethod
-    def load_list(self, filename):
+    def load_list(filename):
         """
         Returns a list of Event objects.
         """

@@ -23,7 +23,7 @@ def show_event(event):
     if event.has_plot_file():
         filename = event.plot_filename()
         print("showing plot from file:", filename)
-        return Image(filename)
+        display(Image(filename))
     else:
         print("making fresh plot")
         make_event_plot(event)
