@@ -5,3 +5,4 @@ input.txt
 dats.txt
 *.ipynb
 *.pyc
+*.prof

@@ -200,7 +200,7 @@ class Scanner(object):
         print("wrote hitmap to", out)
 
         
-def scan(h5_filename):
+def scan(h5_filename, save=True):
     file_start_time = time.time()
     scanner = Scanner(h5_filename)
     scanner.scan_all()
@@ -209,12 +209,14 @@ def scan(h5_filename):
     print(f"scan of {h5_filename} complete")
     print(f"total scan time {file_elapsed:.1f}s")
     print(f"found {len(scanner.hitmap.hits)} hits", flush=True)    
-    scanner.save()
+    if save:
+        scanner.save()
 
     
 if __name__ == "__main__":
     filename = sys.argv[1]
-    hitmap = scan(filename)
+    save = "--nosave" not in sys.argv
+    hitmap = scan(filename, save=save)
 
 
 
