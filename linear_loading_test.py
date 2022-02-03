@@ -5,7 +5,6 @@ Usage: linear_loading_test.py <filename>
 Just does a linear scan through all the data in an h5 file.
 """
 
-import hdf5plugin
 import h5py
 
 import numpy as np

@@ -3,6 +3,8 @@ Utility functions for opening and doing things with h5 files
 """
 
 # These two dependencies must be imported in this order
+import logging
+logging.getLogger("hdf5plugin").setLevel(logging.ERROR)
 import hdf5plugin
 import h5py
 

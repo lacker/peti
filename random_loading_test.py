@@ -5,7 +5,6 @@ Usage: random_loading_test.py <filename>
 Tests a bunch of random accesses of the data in an h5 file.
 """
 
-import hdf5plugin
 import h5py
 
 import numpy as np
