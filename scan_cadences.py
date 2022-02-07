@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 """
 Given a json file of cadence information, creates any hit maps that have not been created yet.
+
+Usage: ./scan_cadences.py <cadencelist>.json
 """
 
 import json

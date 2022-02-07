@@ -187,7 +187,7 @@ class HitInfo(object):
         self.snr = (unnormalized_signal - self.mean) / self.std
 
 
-    def can_join(self, other):
+    def can_join(self, other, check_distance=True):
         """
         Whether self is followed by other closely enough to join them.
         This is ordered, self should come before other.
@@ -196,14 +196,16 @@ class HitInfo(object):
         assert self.coarse_channel == other.coarse_channel
         assert self.coarse_channel_size == other.coarse_channel_size
         assert self.offset == other.offset
+        if not check_distance:
+            return True
         return self.last_column + MARGIN >= other.first_column
 
 
-    def join(self, other):
+    def join(self, other, check_distance=True):
         """
         Join two HitInfo for which can_join is true.
         """
-        assert self.can_join(other)
+        assert self.can_join(other, check_distance=check_distance)
         return HitInfo(self.coarse_channel, self.coarse_channel_size, self.first_column, other.last_column)
     
     

@@ -2,6 +2,8 @@
 """
 Given a json file of cadence data where we already have hitmaps, combine the data to find events
 and plot it.
+
+Usage: ./combine_cadences.py <cadencelist>.json
 """
 
 import json
