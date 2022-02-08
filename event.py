@@ -213,17 +213,25 @@ class Event(object):
         if current_group:
             groups.append(current_group)
 
-        # Filter out groups with only one hit
+
         groups = [g for g in groups if len(g) > 1]
         if not groups:
             return
 
         # Construct events for this coarse channel
         for group in groups:
-            print(group)
             hits = [None] * len(hit_maps)
             for (index, hit) in group:
-                hits[index] = hit
+                if hits[index] is None:
+                    hits[index] = hit
+                else:
+                    hits[index] = hits[index].join(hit, check_distance=False)
+
+            # Filter out groups with only one hit
+            if len([hit for hit in hits if hit is not None]) <= 1:
+                continue
+
+            print(hits)
             yield Event(hits, hit_maps=hit_maps)
 
 
