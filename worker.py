@@ -1,8 +1,17 @@
 #!/usr/bin/env python
 """
+This is a worker script. The idea is that one worker script runs on each GPU-equipped machine. It expects data to
+already be parceled out on the machine, and to be processing data local to its machine.
+
 Usage:
-./run.py [<configfile>.json]
+./worker.py [<configfile>.json]
 If not provided, the config file defaults to ~/peticonfig/<machine name>.json
+
+The worker config file is json with the format:
+
+machine: the machine name the config is intended for
+directories: a list of directories the machine should process
+stop: isoformat time string of what time the worker should stop at.
 """
 
 from datetime import datetime, timezone
