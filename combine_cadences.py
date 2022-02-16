@@ -49,7 +49,7 @@ def iter_combine_cadences(cadence_file, output_file=None):
         filenames = info["filenames"]
         hit_maps = [HitMap.load(f) for f in filenames]
         new_events = [e for e in Event.find_events(hit_maps) if e.score >= 0]
-        print(f"{len(new_events) events found in {filenames[0]} etc")
+        print(f"{len(new_events)} events found in {filenames[0]} etc")
         events.extend(new_events)
         yield
     print(len(events), "total events found")

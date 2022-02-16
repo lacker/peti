@@ -22,6 +22,7 @@ def iter_scan_cadences(cadence_file):
         cadence_file = os.path.join(cadence_file, "cadences.json")
 
     for line in open(cadence_file):
+        info = json.loads(line.strip())
         for h5_filename in info["filenames"]:
             if os.path.exists(make_hit_map_filename(h5_filename)):
                 continue

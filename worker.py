@@ -23,7 +23,9 @@ import sys
 import time
 
 import cupy as cp
-from detect_cadences import iter_detect_cadences
+
+from combine_cadences import iter_combine_cadences
+from detect_cadences import detect_cadences
 from scan_cadences import iter_scan_cadences
 
 
@@ -33,6 +35,10 @@ def log(message):
 
 class OutOfTimeException(Exception):
     pass
+
+
+def sleep():
+    time.sleep(600)
 
     
 class Config(object):
@@ -92,23 +98,28 @@ class Config(object):
                 
         except OutOfTimeException as e:
             log(f"stop time is {self.stop} - sleeping...")
-            time.sleep(600)
+            sleep()
 
         log(f"done processing - sleeping...")
-        time.sleep(600)
+        sleep()
 
             
             
 assert __name__ == "__main__"
 
-try:
+if len(sys.argv) >= 2:
     filename = sys.argv[1]
-except IndexError:
-    machine = socker.gethostname()
+else:
+    machine = socket.gethostname()
     filename = os.path.expanduser(f"~/peticonfig/{machine}.json")
 
     
 while True:
-    conf = Config(filename)
-    assert conf.machine == socket.gethostname()
-    conf.run()
+    if not os.path.exists(filename):
+        # Workers with no config files just wait for config files to exist
+        log(f"no config file exists at {filename} - sleeping...")
+        sleep()
+    else:
+        conf = Config(filename)
+        assert conf.machine == socket.gethostname()
+        conf.run()
