@@ -3,49 +3,79 @@
 Given a json file of cadence data where we already have hitmaps, combine the data to find events
 and plot it.
 
-Usage: ./combine_cadences.py <cadencelist>.json
+Usage: ./combine_cadences.py <cadencelist>.json <output>.events
 """
 
 import json
+import socket
 import sys
 
 from event import Event
 from hit_map import HitMap
 from plot_event import save_event_plot
 
-assert __name__ == "__main__"
 
-# Process cadences based on the command line args
-input_name = sys.argv[1]
-if input_name.endswith(".json"):
-    instream = open(input_name)
-elif input_name == "-":
-    instream = sys.stdin
-else:
-    raise RuntimeError("bad input name:", input_name)
+def iter_combine_cadences(cadence_file, output_file=None):
+    """
+    Accepts either a json file, or a directory containing a cadences.json file.
+    output is the name of a .events file to create. If not provided, we guess a default location:
+      ~/petievents/{session}/{machine}.events
+    This is idempotent; if the events file already exists we just exit.
+    Pauses after each chunk of work.
+    """
+    if not cadence_file.endswith(".json"):
+        cadence_file = os.path.join(cadence_file, "cadences.json")
 
-output_name = sys.argv[2]
-assert output_name.endswith(".events")
+    if output_file is None:
+        # Guess the session from the location of the cadence file
+        parts = cadence_file.split("/")
+        session_list = [s for s in parts if "GBT" in s]
+        assert len(session_list) == 1, cadence_file
+        session = session_list[0]
 
-for line in instream:
-    info = json.loads(line.strip())
-    hit_maps = [HitMap.load(f) for f in info["filenames"]]
-    events = list(Event.find_events(hit_maps))
-    print(len(events), "events found")
+        session_dir = os.path.expanduser(f"~/petievents/{session}")
+        if not os.path.isdir(session_dir):
+            os.mkdir(session_dir)
+        output_file = os.path.join(session_dir, f"{socket.gethostname()}.events")
 
-    # When we save events we want to do it best-first
-    events.sort(key=lambda e: -e.score)
-    good_events = [e for e in events if e.score >= 0]
-    print(len(good_events), "good events found")
-    Event.save_list(good_events, output_name)
-    print("event list saved to", output_name)
+    assert output_file.endswith(".events")        
+    if os.path.exists(output_file):
+        print("found existing events file:", output_file)
+        return
 
+    events = []
+    for line in open(cadence_file):
+        info = json.loads(line.strip())
+        filenames = info["filenames"]
+        hit_maps = [HitMap.load(f) for f in filenames]
+        new_events = [e for e in Event.find_events(hit_maps) if e.score >= 0]
+        print(f"{len(new_events) events found in {filenames[0]} etc")
+        events.extend(new_events)
+        yield
+    print(len(events), "total events found")
+        
     # Image loading for plot generation is faster to do it in frequency order
     good_events.sort(key=lambda e: e.frequency_range())
     for event in good_events:
         if not event.has_plot_file():
             save_event_plot(event)
             event.depopulate_chunks()
-            
-    print("for now, we are just processing one cadence")
-    sys.exit(0)
+            yield
+
+    # When we save events we want to do it best-first
+    events.sort(key=lambda e: -e.score)
+    Event.save_list(good_events, output_name)
+    print("combine_cadences complete. event list saved to", output_name)
+
+    
+def combine_cadences(cadence_file, output_file=None):
+    for _ in iter_combine_cadences(cadence_file, output_file=output_file):
+        pass
+
+    
+if __name__ == "__main__":
+    input_file = sys.argv[1]
+    output_file = sys.argv[2]
+    combine_cadences(input_file, output_file=output_file)
+
+

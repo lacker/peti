@@ -6,6 +6,8 @@ The format created is one json object per line, with each line having:
 filenames: list of filenames
 
 Usage: ./detect_cadences.py <directory>
+
+This is idempotent; if the file already exists it just exits.
 """
 
 import json
@@ -16,6 +18,11 @@ from h5_file import H5File
 
 
 def detect_cadences(directory):
+    cadence_file = os.path.join(directory, "cadences.json")
+    if os.path.exists(cadence_file):
+        print("found existing cadence file:", cadence_file)
+        return
+    
     print("detecting cadences in", directory)
     contents = os.listdir(directory)
 

@@ -1,17 +1,21 @@
 #!/usr/bin/env python
 """
 Usage:
-./run.py <configfile>.json
+./run.py [<configfile>.json]
+If not provided, the config file defaults to ~/peticonfig/<machine name>.json
 """
 
 from datetime import datetime, timezone
 import json
 import os
+from pathlib import Path
 import socket
 import sys
 import time
 
 import cupy as cp
+from detect_cadences import iter_detect_cadences
+from scan_cadences import iter_scan_cadences
 
 
 def log(message):
@@ -66,12 +70,16 @@ class Config(object):
                 if os.path.exists(donefile):
                     continue
 
-                cadencefile = os.path.join(directory, "cadences.json")
-                if not os.path.exists(cadencefile):
-                    raise RuntimeError("TODO: write detect_cadences")
+                detect_cadences(directory)
+                self.check_time()
 
-                # TODO: scan_cadences
-                # TODO: combine_cadences
+                for _ in iter_scan_cadences(directory):
+                    self.check_time()
+
+                for _ in iter_combine_cadences(directory):
+                    self.check_time()
+                    
+                Path(donefile).touch()
                 
         except OutOfTimeException as e:
             log(f"stop time is {self.stop} - sleeping...")
@@ -84,9 +92,13 @@ class Config(object):
             
 assert __name__ == "__main__"
 
-filename = sys.argv[1]
+try:
+    filename = sys.argv[1]
+except IndexError:
+    machine = socker.gethostname()
+    filename = os.path.expanduser(f"~/peticonfig/{machine}.json")
 
-
+    
 while True:
     conf = Config(filename)
     assert conf.machine == socket.gethostname()

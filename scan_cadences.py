@@ -13,20 +13,29 @@ import scanner
 from hit_map import make_hit_map_filename
 
 
-assert __name__ == "__main__"
+def iter_scan_cadences(cadence_file):
+    """
+    Accepts either a json file, or a directory containing a cadences.json file.
+    Pauses after each scan.
+    """
+    if not cadence_file.endswith(".json"):
+        cadence_file = os.path.join(cadence_file, "cadences.json")
 
-# Process cadences based on the command line args
-input_name = sys.argv[1]
-if input_name.endswith(".json"):
-    instream = open(input_name)
-elif input_name == "-":
-    instream = sys.stdin
-else:
-     raise RuntimeError("bad input name:", input_name)
- 
-for line in instream:
-    info = json.loads(line.strip())
-    for h5_filename in info["filenames"]:
-        if os.path.exists(make_hit_map_filename(h5_filename)):
-            continue
-        scanner.scan(h5_filename)
+    for line in open(cadence_file):
+        for h5_filename in info["filenames"]:
+            if os.path.exists(make_hit_map_filename(h5_filename)):
+                continue
+            scanner.scan(h5_filename)
+            yield
+    print("scan_cadences complete")
+
+    
+def scan_cadences(cadence_file):
+    for _ in iter_scan_cadences(cadence_file):
+        pass
+    
+if __name__ == "__main__":
+    # Process cadences based on the command line args
+    input_name = sys.argv[1]
+    scan_cadences(input_name)
+
