@@ -6,7 +6,10 @@ and plot it.
 Usage: ./combine_cadences.py <cadencelist>.json <output>.events
 """
 
+import cupy as cp
 import json
+import os
+import psutil
 import socket
 import sys
 
@@ -48,20 +51,24 @@ def iter_combine_cadences(cadence_file, output_file=None):
         info = json.loads(line.strip())
         filenames = info["filenames"]
         hit_maps = [HitMap.load(f) for f in filenames]
-        new_events = [e for e in Event.find_events(hit_maps) if e.score >= 0]
+        new_events = [e for e in Event.find_events(hit_maps) if e.score >= 1]
         print(f"{len(new_events)} events found in {filenames[0]} etc")
+
+        # Generate plots one file at a time, for data loading efficiency
+        chunks = None
+        for event in new_events:
+            if not event.has_plot_file():
+                save_event_plot(event, maybe_reuse_chunks=chunks)
+                mb_ram = psutil.Process().memory_info().rss // 10**6
+                gb_gpu = cp.get_default_memory_pool().total_bytes() // 10**6
+                print(f"memory usage: {mb_ram}M RAM, {gb_gpu}M GPU")
+                chunks = event.detach_chunks()
+            
         events.extend(new_events)
         yield
+
     print(len(events), "total events found")
         
-    # Image loading for plot generation is faster to do it in frequency order
-    good_events.sort(key=lambda e: e.frequency_range())
-    for event in good_events:
-        if not event.has_plot_file():
-            save_event_plot(event)
-            event.depopulate_chunks()
-            yield
-
     # When we save events we want to do it best-first
     events.sort(key=lambda e: -e.score)
     Event.save_list(good_events, output_name)

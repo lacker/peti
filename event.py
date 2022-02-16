@@ -141,6 +141,20 @@ class Event(object):
         first_freq = self.fch1 + first_index * self.foff
         last_freq = self.fch1 + last_index * self.foff
         return (first_freq, last_freq)
+
+    def safe_set_chunks(self, chunks):
+        """
+        Sets the chunks if they match.
+        Does nothing if they do not.
+        Returns whether they matched.
+        """
+        for chunk, filename in zip(chunks, self.h5_filenames):
+            if chunk.filename() != filename:
+                return False
+            if chunk.offset != self.offset():
+                return False
+        self.chunks = chunks
+        return True
     
     def populate_chunks(self):
         if self.chunks:
@@ -151,8 +165,13 @@ class Event(object):
             chunk = hit_map.get_chunk(self.coarse_channel)
             self.chunks.append(chunk)
 
-    def depopulate_chunks(self):
+    def detach_chunks(self):
+        """
+        Removes references to the chunks and returns them to the caller.
+        """
+        answer = self.chunks
         self.chunks = None
+        return answer
             
     def start_times(self):
         return [datetime.utcfromtimestamp(Time(tstart, format="mjd").unix) for tstart in self.tstarts]
@@ -231,7 +250,7 @@ class Event(object):
             if len([hit for hit in hits if hit is not None]) <= 1:
                 continue
 
-            print(hits)
+            # print(hits)
             yield Event(hits, hit_maps=hit_maps)
 
 

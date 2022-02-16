@@ -8,14 +8,20 @@ from matplotlib import pyplot as plt
 import os
 from pathlib import Path
 
-def make_event_plot(event):
+def make_event_plot(event, maybe_reuse_chunks=None):
     """
     Uses pyplot to draw a plot for this event.
     It does not show or save the figure so callers can pick what they want to do with it.
     The figure is left "open" so the caller should call plt.close() when it's done.
+
+    For efficiency, you can pass the chunks if they are already loaded, in maybe_reuse_chunks.
+    This function will safely ignore them if they are the wrong chunks.
     """
     first_freq, last_freq = event.frequency_range()
     start_times = event.start_times()
+    if maybe_reuse_chunks:
+        if event.safe_set_chunks(maybe_reuse_chunks):
+            print("reusing chunks")
     event.populate_chunks()
     first_column = event.first_column()
     last_column = event.last_column()
@@ -66,11 +72,11 @@ def make_event_plot(event):
     plt.subplots_adjust(hspace=0)
 
 
-def save_event_plot(event):
+def save_event_plot(event, maybe_reuse_chunks=None):
     plot_filename = event.plot_filename()
     dirname = os.path.dirname(plot_filename)
     Path(dirname).mkdir(parents=True, exist_ok=True)
-    make_event_plot(event)
+    make_event_plot(event, maybe_reuse_chunks=maybe_reuse_chunks)
     plt.savefig(plot_filename, bbox_inches="tight")
     print("saved plot to", plot_filename)
     plt.close()
