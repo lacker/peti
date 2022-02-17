@@ -244,7 +244,7 @@ class Event(object):
                 if hits[index] is None:
                     hits[index] = hit
                 else:
-                    hits[index] = hits[index].join(hit, check_distance=False)
+                    hits[index] = hits[index].join(hit, after_linear_fitting=True)
 
             # Filter out groups with only one hit
             if len([hit for hit in hits if hit is not None]) <= 1:
@@ -299,9 +299,17 @@ class Event(object):
     def save_list(events, filename):
         filename = os.path.expanduser(filename)
         assert filename.endswith(".events")
-        plain = [event.to_plain() for event in events]
-        with open(filename, "wb") as outfile:
-            writer(outfile, PARSED_EVENT_SCHEMA, plain)
+        plain = []
+        for event in events:
+            assert type(event) is Event
+            plain.append(event.to_plain())
+        try:
+            with open(filename, "wb") as outfile:
+                writer(outfile, PARSED_EVENT_SCHEMA, plain)
+        except:
+            # Don't leave some half-written file there
+            os.remove(filename)
+            raise
 
     @staticmethod
     def load_list(filename):

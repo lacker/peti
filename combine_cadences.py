@@ -56,23 +56,27 @@ def iter_combine_cadences(cadence_file, output_file=None):
 
         # Generate plots one file at a time, for data loading efficiency
         chunks = None
+        newly_saved = 0
         for event in new_events:
             if not event.has_plot_file():
                 save_event_plot(event, maybe_reuse_chunks=chunks)
+                newly_saved += 1
                 mb_ram = psutil.Process().memory_info().rss // 10**6
                 gb_gpu = cp.get_default_memory_pool().total_bytes() // 10**6
                 print(f"memory usage: {mb_ram}M RAM, {gb_gpu}M GPU")
                 chunks = event.detach_chunks()
             
         events.extend(new_events)
+        if newly_saved == 0:
+            print(f"plots for these {len(new_events)} events have already been generated")
         yield
 
     print(len(events), "total events found")
         
     # When we save events we want to do it best-first
     events.sort(key=lambda e: -e.score)
-    Event.save_list(good_events, output_name)
-    print("combine_cadences complete. event list saved to", output_name)
+    Event.save_list(events, output_file)
+    print("combine_cadences complete. event list saved to", output_file)
 
     
 def combine_cadences(cadence_file, output_file=None):

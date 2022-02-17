@@ -83,6 +83,7 @@ class Config(object):
             for directory in self.directories:
                 donefile = os.path.join(directory, "peti.done")
                 if os.path.exists(donefile):
+                    print(f"{donefile} exists, skipping directory")
                     continue
 
                 detect_cadences(directory)

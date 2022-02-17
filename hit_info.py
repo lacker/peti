@@ -39,6 +39,8 @@ HIT_INFO_SCHEMA = {
 
 
 class HitInfo(object):
+    normal_fields = ["drift_rate", "drift_start", "snr", "mse", "area"]
+    
     def __init__(self, coarse_channel, coarse_channel_size, first_column, last_column, hit_windows=None, data=None):
         """
         required data:
@@ -59,7 +61,14 @@ class HitInfo(object):
         if self.data is not None:
             assert self.data.offset == self.offset            
 
-            
+        # These get populated once we do a linear fit, or copy over its data from a serialized HitInfo
+        self.drift_rate = None
+        self.drift_start = None
+        self.snr = None
+        self.mse = None
+        self.area = None
+
+        
     def attach_chunk(self, chunk):
         assert self.data is None
         assert self.offset == chunk.offset
@@ -78,23 +87,23 @@ class HitInfo(object):
         coarse_channel = offset // coarse_channel_size
         info = HitInfo(coarse_channel, coarse_channel_size, first_column, plain["last_column"] - offset)
 
-        for field in ["drift_rate", "drift_start", "snr", "mse", "area"]:
+        for field in HitInfo.normal_fields:
             setattr(info, field, plain[field])
         return info
 
 
     def to_plain(self):
         """
-        Plain conversion is straightforward, except that first_column and last_column are stored without
-        offset, so we have to convert.
+        first_column and last_column are stored without offset, so we have to convert.
+        We can only convert a field to plain once linear_fit has been called.
         """
+        assert self.drift_rate is not None, "HitInfo to_plain can only be called with linear fit data"
         plain = {
             "first_column": self.offset + self.first_column,
             "last_column": self.offset + self.last_column,
         }
-        for field in ["drift_rate", "drift_start", "snr", "mse", "area"]:
-            if hasattr(self, field):
-                plain[field] = getattr(self, field)
+        for field in HitInfo.normal_fields:
+            plain[field] = getattr(self, field)
         return plain
         
         
@@ -201,12 +210,22 @@ class HitInfo(object):
         return self.last_column + MARGIN >= other.first_column
 
 
-    def join(self, other, check_distance=True):
+    def join(self, other, after_linear_fitting=False):
         """
         Join two HitInfo for which can_join is true.
+
+        If after_linear_fitting is set, we are joining two hits late in the process, after we already ran linear fits.
+        This is typically because we categorized two hits as separate, but upon considering the whole cadence, they
+        seem to be the same hit.
+        In this case we have to join the hits even if locally they don't seem very joinable.
         """
-        assert self.can_join(other, check_distance=check_distance)
-        return HitInfo(self.coarse_channel, self.coarse_channel_size, self.first_column, other.last_column)
+        assert self.can_join(other, check_distance=(not after_linear_fitting))
+        info = HitInfo(self.coarse_channel, self.coarse_channel_size, self.first_column, other.last_column)
+        if after_linear_fitting:
+            # An unappealing hack - a linear fit to one of the two subhits isn't really a good fit any more
+            for field in HitInfo.normal_fields:
+                setattr(info, field, getattr(self, field))
+        return info
     
     
     def __str__(self):
