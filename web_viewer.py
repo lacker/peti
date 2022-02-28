@@ -13,7 +13,7 @@ class WebViewer(object):
 if __name__ == "__main__":
     cherrypy.config.update({
         "server.socket_host": "0.0.0.0",
-        "server.socket_port": 8000,
+        "server.socket_port": 9000,
     })
 
     cherrypy.quickstart(WebViewer())
