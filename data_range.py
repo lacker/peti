@@ -2,7 +2,7 @@
 The DataRange represents a part of an underlying H5 file.
 """
 
-import cupy as cp
+import cp
 
 from config import DISPLAY_WIDTH, MARGIN
 

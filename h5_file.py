@@ -9,7 +9,7 @@ import hdf5plugin
 import h5py
 
 from astropy.time import Time
-import cupy as cp
+import cp
 import os
 import random
 
