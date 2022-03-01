@@ -5,7 +5,7 @@ The hit could come from different sources - a scanning algorithm, deserializing 
 we have in these different cases is somewhat different.
 """
 
-import cupy as cp
+import cp    
 import numpy as np
 
 from config import MARGIN
