@@ -99,7 +99,7 @@ class Event(object):
             if i % 2 == 0:
                 self.score += 1
             else:
-                self.score -= 1
+                self.score -= 2
         
     def first_column(self):
         """
@@ -113,6 +113,26 @@ class Event(object):
         """
         return max(h.last_column for h in self.hits if h)
 
+    def on_hits(self):
+        return [hit for (i, hit) in enumerate(self.hits) if hit is not None and i % 2 == 0]
+
+    def off_hits(self):
+        return [hit for (i, hit) in enumerate(self.hits) if hit is not None and i % 2 == 1]
+
+    def combined_snr(self):
+        """
+        A heuristic. Average SNR of the on-hits minus max SNR of the off-hits.
+        Hopefully this generally forbids off-hits but makes an exception if they are far smaller.
+        """
+        average_on = sum(hit.snr for hit in self.on_hits()) / 3
+        max_off = max([hit.snr for hit in self.off_hits()] + [0])
+        return average_on - max_off
+
+    def total_columns(self):
+        min_first_column = min(hit.first_column for hit in self.on_hits())
+        max_last_column = max(hit.last_column for hit in self.on_hits())
+        return max_last_column - min_first_column + 1
+    
     def session(self):
         """
         Heuristic. Returns None if it can't figure it out.
