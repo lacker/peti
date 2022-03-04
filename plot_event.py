@@ -8,6 +8,17 @@ from matplotlib import pyplot as plt
 import os
 from pathlib import Path
 
+def readable_frequency_range(low, high):
+    max_digits = 8
+    for digits in range(1, max_digits + 1):
+        formatter = f".{digits}f"
+        low_string = format(low, formatter)
+        high_string = format(high, formatter)
+        candidate_string = low_string + " - " + high_string
+        if low_string != high_string or digits >= max_digits:
+            return candidate_string
+    raise RuntimeError("control should not reach here")
+
 def make_event_plot(event, maybe_reuse_chunks=None):
     """
     Uses pyplot to draw a plot for this event.
@@ -41,33 +52,9 @@ def make_event_plot(event, maybe_reuse_chunks=None):
         ax.set_yticklabels([start_time.strftime("%H:%M:%S")], fontsize=16)
         
         if i == 0:
-            title = f"Cadence with target {event.source_name} on {event.readable_day_range()}"
-            session = event.session()
-            if session:
-                title += f", session {session}"
+            title = f"{event.source_name}, frequency {readable_frequency_range(first_freq, last_freq)}"
             ax.set_title(title, size=24, pad=24)
             
-        if i + 1 == len(event.chunks):
-            ax.tick_params(axis="x", bottom=True, labelbottom=True, length=10)
-            width = region.shape[1] - 1
-
-            # Figure out which ticks we want based on steps
-            digits = 4
-            step = 1 / (10 ** digits)
-            freq = int(first_freq / step) * step
-            ticks = []
-            labels = []
-            while freq > last_freq:
-                fraction = (freq - first_freq) / (last_freq - first_freq)
-                ticks.append(fraction * width)
-                if 0.05 < fraction < 0.95:
-                    labels.append(f"%.{digits}f MHz" % freq)
-                else:
-                    labels.append("")
-                freq -= step
-
-            ax.set_xticks(ticks)
-            ax.set_xticklabels(labels, fontsize=16)
             
     plt.subplots_adjust(hspace=0)
 

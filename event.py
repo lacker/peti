@@ -91,16 +91,7 @@ class Event(object):
         # Lazily populated
         self.chunks = None
 
-        # For now, the score is purely defined by how much the hits align with the ABACAD pattern.
-        self.score = 0
-        for i, hit in enumerate(self.hits):
-            if hit is None:
-                continue
-            if i % 2 == 0:
-                self.score += 1
-            else:
-                self.score -= 2
-        
+                
     def first_column(self):
         """
         Relative to the coarse channel.
@@ -128,9 +119,35 @@ class Event(object):
         max_off = max([hit.snr for hit in self.off_hits()] + [0])
         return average_on - max_off
 
+    
+    def score(self):
+        """
+        The top-level heuristic.
+        Roughly maps to SNR.
+        A positive score indicates a human should look at it.
+        """
+        if self.total_columns() <= 3:
+            # It's a vertical line, no matter how cadencey it is
+            return 0
+        
+        num_on = len(self.on_hits())
+        num_off = len(self.off_hits())
+        if num_on < 2:
+            return 0
+        if num_off > 1:
+            return 0
+        snr = self.combined_snr()
+        if snr < 2:
+            return 0
+        return snr
+    
+    
     def total_columns(self):
-        min_first_column = min(hit.first_column for hit in self.on_hits())
-        max_last_column = max(hit.last_column for hit in self.on_hits())
+        on_hits = self.on_hits()
+        if not on_hits:
+            return 0
+        min_first_column = min(hit.first_column for hit in on_hits)
+        max_last_column = max(hit.last_column for hit in on_hits)
         return max_last_column - min_first_column + 1
     
     def session(self):
@@ -206,7 +223,8 @@ class Event(object):
         if last_dt.month == first_dt.month:
             return f"{first_phrase}-{last_dt.day}"
         return f"{first_phrase} - {last_dt.strftime('%b')} {last_dt.day}"
-            
+
+    
     @staticmethod
     def find_events(hit_maps, coarse_channel=None):
         """

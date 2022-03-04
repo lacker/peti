@@ -51,9 +51,11 @@ def iter_combine_cadences(cadence_file, output_file=None):
         info = json.loads(line.strip())
         filenames = info["filenames"]
         hit_maps = [HitMap.load(f) for f in filenames]
-        new_events = [e for e in Event.find_events(hit_maps) if e.score >= 1]
+        new_events = [e for e in Event.find_events(hit_maps) if e.score() > 0]
         print(f"{len(new_events)} events found in {filenames[0]} etc")
-
+        if not new_events:
+            continue
+        
         # Generate plots one file at a time, for data loading efficiency
         chunks = None
         newly_saved = 0
@@ -74,7 +76,7 @@ def iter_combine_cadences(cadence_file, output_file=None):
     print(len(events), "total events found")
         
     # When we save events we want to do it best-first
-    events.sort(key=lambda e: -e.score)
+    events.sort(key=lambda e: -e.score())
     Event.save_list(events, output_file)
     print("combine_cadences complete. event list saved to", output_file)
 

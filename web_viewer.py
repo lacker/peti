@@ -7,12 +7,14 @@ import cherrypy
 import html
 import json
 import os
+import random
 
 from config import IMAGE_ROOT
 from event import Event
 
 EVENT_DIR = os.path.expanduser("~/petievents")
 
+CACHE_VERSION = random.random()
 
 def make_pre(lines):
     html_lines = ["<pre>"] + [html.escape(line) for line in lines] + ["</pre>", ""]
@@ -33,15 +35,16 @@ def session_sort_key(session):
     return tuple(converted)
 
 
-def strip_image_root(filename):
+def img_src(filename):
     assert filename.startswith(IMAGE_ROOT)
-    return filename[len(IMAGE_ROOT):].strip("/")
+    png = filename[len(IMAGE_ROOT):].strip("/")
+    return f"../../../images/{png}?cacheversion={CACHE_VERSION}"
 
-
+    
 def load_events(session, machine):
     filename = f"{EVENT_DIR}/{session}/{machine}.events"
-    events = [e for e in Event.load_list(filename) if e.score >= 2 and e.total_columns() > 3]
-    events.sort(key=lambda e: -e.combined_snr())
+    events = [e for e in Event.load_list(filename)]
+    events.sort(key=lambda e: -e.score())
     return events
 
 
@@ -69,7 +72,10 @@ class WebViewer(object):
 
     
     @cherrypy.expose()
-    def images(self, *args):
+    def images(self, *args, **kwargs):
+        """
+        We just ignore kwargs, to let them be used for cache-busting.
+        """
         for arg in args:
             assert not arg.startswith(".")
         path = "/".join([IMAGE_ROOT] + list(args))
@@ -84,7 +90,8 @@ class WebViewer(object):
         first_index = (page - 1) * events_per_page
         last_index = min(first_index + events_per_page - 1, len(events) - 1)
 
-        parts = [f"<h1>PETI at Green Bank: Events</h1>", f"<h2>session {session}, machine {machine}</h2>",
+        parts = [f"<h1>PETI at Green Bank: Events</h1>",
+                 f"<h2>session {session}, machine {machine}</h2>",
                  f"<pre>showing events {first_index}-{last_index} of {len(events)}</pre>"]
 
         if page != 1:
@@ -102,8 +109,7 @@ class WebViewer(object):
 
         for i, event in enumerate(events[first_index:last_index + 1]):
             index = i + first_index
-            plot_filename = event.plot_filename()
-            img_tag = f"<img src='../../../images/{strip_image_root(plot_filename)}' height='640' style='margin:30'/>"
+            img_tag = f"<img src='{img_src(event.plot_filename())})' height='640' style='margin:30'/>"
             parts.append(f"<a href='../../../detail/{session}/{machine}/{index}'>{img_tag}</a>")
         
         parts.append(nav_bar)
@@ -115,10 +121,11 @@ class WebViewer(object):
         event_id = int(event_id)
         events = load_events(session, machine)
         event = events[event_id]
-        parts = [f"<h1>PETI at Green Bank: Event Detail</h1>", f"<h2>session {session}, machine {machine}, candidate event {event_id}</h2>"]
-        parts.append(f"<img src='../../../images/{strip_image_root(event.plot_filename())}' height='960'/>")
+        parts = [f"<h1>PETI at Green Bank: Event Detail</h1>",
+                 f"<h2>session {session}, {event.readable_day_range()}, machine {machine}, candidate event {event_id}</h2>"]
+        parts.append(f"<img src='{img_src(event.plot_filename())}' height='960'/>")
         lines = json.dumps(event.to_plain(), indent=2).strip().split("\n")
-        lines = [f"combined SNR: {event.combined_snr()}"] + lines
+        lines = [f"score: {event.score()}"] + lines
         parts.append(make_pre(lines))
         return "\n".join(parts)
 
