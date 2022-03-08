@@ -81,6 +81,7 @@ class Config(object):
         """
         try:
             for directory in self.directories:
+                log(f"checking {directory} for work to be done...")
                 donefile = os.path.join(directory, "peti.done")
                 if os.path.exists(donefile):
                     print(f"{donefile} exists, skipping directory")
