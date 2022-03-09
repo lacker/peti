@@ -9,10 +9,8 @@ import json
 import os
 import random
 
-from config import IMAGE_ROOT
+from config import EVENT_ROOT, IMAGE_ROOT
 from event import Event
-
-EVENT_DIR = os.path.expanduser("~/petievents")
 
 CACHE_VERSION = random.random()
 
@@ -42,7 +40,7 @@ def img_src(filename):
 
     
 def load_events(session, machine):
-    filename = f"{EVENT_DIR}/{session}/{machine}.events"
+    filename = f"{EVENT_ROOT}/{session}/{machine}.events"
     events = [e for e in Event.load_list(filename)]
     events.sort(key=lambda e: -e.score())
     return events
@@ -54,7 +52,7 @@ class WebViewer(object):
         """
         List the sessions we have data for
         """
-        sessions = list(sorted(os.listdir(EVENT_DIR), key=session_sort_key))
+        sessions = list(sorted(os.listdir(EVENT_ROOT), key=session_sort_key))
         parts = ["<h1>PETI at Green Bank: Overview</h1>", f"<pre>we have data for {len(sessions)} sessions:</pre>"]
         for session in sessions:
             parts.append(f"<pre><a href='session/{session}'>{session}</a></pre>")
@@ -63,7 +61,7 @@ class WebViewer(object):
     
     @cherrypy.expose()
     def session(self, session):
-        session_dir = EVENT_DIR + "/" + session
+        session_dir = EVENT_ROOT + "/" + session
         machines = [filename.split(".")[0] for filename in sorted(os.listdir(session_dir))]
         parts = [f"<h1>PETI at Green Bank: Session {session}</h1>", f"<pre>we have event data from {len(machines)} machines:</pre>"]
         for machine in machines:

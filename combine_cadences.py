@@ -9,10 +9,12 @@ Usage: ./combine_cadences.py <cadencelist>.json <output>.events
 import cupy as cp
 import json
 import os
+from pathlib import Path
 import psutil
 import socket
 import sys
 
+from config import EVENT_ROOT
 from event import Event
 from hit_map import HitMap
 from plot_event import save_event_plot
@@ -22,7 +24,7 @@ def iter_combine_cadences(cadence_file, output_file=None):
     """
     Accepts either a json file, or a directory containing a cadences.json file.
     output is the name of a .events file to create. If not provided, we guess a default location:
-      ~/petievents/{session}/{machine}.events
+      {EVENT_ROOT}/{session}/{machine}.events
     This is idempotent; if the events file already exists we just exit.
     Pauses after each chunk of work.
     """
@@ -36,9 +38,9 @@ def iter_combine_cadences(cadence_file, output_file=None):
         assert len(session_list) == 1, cadence_file
         session = session_list[0]
 
-        session_dir = os.path.expanduser(f"~/petievents/{session}")
+        session_dir = os.path.expanduser(f"{EVENT_ROOT}/{session}")
         if not os.path.isdir(session_dir):
-            os.mkdir(session_dir)
+            Path(session_dir).mkdir(parents=True, exist_ok=True)
         output_file = os.path.join(session_dir, f"{socket.gethostname()}.events")
 
     assert output_file.endswith(".events")        

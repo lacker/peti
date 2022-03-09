@@ -16,11 +16,20 @@ MARGIN = 10
 # Standard image width to display
 DISPLAY_WIDTH = 60
 
+# Directory that generated files are placed in
+PETIDATA = os.path.expanduser("~/petidata")
+
 # Where generated images are stored
-IMAGE_ROOT = os.path.expanduser("~/images")
+IMAGE_ROOT = f"{PETIDATA}/images"
 
 # Where hitmaps are saved
-HIT_MAP_ROOT = os.path.expanduser("~/hitmaps")
+HIT_MAP_ROOT = f"{PETIDATA}/hitmaps"
+
+# Where config data is read from
+CONFIG_ROOT = f"{PETIDATA}/config"
+
+# Where event data is stored
+EVENT_ROOT = f"{PETIDATA/events"
 
 
 def front_replace(s, old, new):

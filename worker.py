@@ -24,6 +24,7 @@ import time
 
 import cupy as cp
 
+from config import CONFIG_ROOT
 from combine_cadences import iter_combine_cadences
 from detect_cadences import detect_cadences
 from scan_cadences import iter_scan_cadences
@@ -113,7 +114,7 @@ if len(sys.argv) >= 2:
     filename = sys.argv[1]
 else:
     machine = socket.gethostname()
-    filename = os.path.expanduser(f"~/peticonfig/{machine}.json")
+    filename = os.path.expanduser(f"{CONFIG_ROOT}/{machine}.json")
 
     
 while True:
