@@ -56,6 +56,8 @@ EVENT_SCHEMA = {
 
 PARSED_EVENT_SCHEMA = parse_schema(EVENT_SCHEMA)
 
+# This is specific to Green Bank.
+NOTCH_FILTERS = [(1200, 1340), (2300, 2360)]
 
 class Event(object):
     normal_fields = ["h5_filenames", "source_name", "fch1", "foff", "nchans", "tstarts", "coarse_channels"]
@@ -129,6 +131,12 @@ class Event(object):
         if self.total_columns() <= 3:
             # It's a vertical line, no matter how cadencey it is
             return 0
+
+        # Check for the notch filter
+        freq1, freq2 = self.frequency_range()
+        for low, high in NOTCH_FILTERS:
+            if low <= freq1 <= high and low <= freq2 <= high:
+                return 0
         
         num_on = len(self.on_hits())
         num_off = len(self.off_hits())
