@@ -284,6 +284,7 @@ class Event(object):
             return
 
         # Construct events for this coarse channel
+        events = []
         for group in groups:
             hits = [None] * len(hit_maps)
             for (index, hit) in group:
@@ -297,7 +298,15 @@ class Event(object):
                 continue
 
             # print(hits)
-            yield Event(hits, hit_maps=hit_maps)
+            events.append(Event(hits, hit_maps=hit_maps))
+
+        # Filter to limit the number of events per coarse channel, as an anti-noise measure
+        max_events_per_channel = 50
+        events.sort(lambda e: -e.score())
+        events = events[:max_events_per_channel]
+        events.sort(lambda e: e.first_column)
+        for event in events:
+            yield event
 
 
     @staticmethod
