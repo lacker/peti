@@ -29,7 +29,7 @@ HIT_MAP_ROOT = f"{PETIDATA}/hitmaps"
 CONFIG_ROOT = f"{PETIDATA}/config"
 
 # Where event data is stored
-EVENT_ROOT = f"{PETIDATA/events"
+EVENT_ROOT = f"{PETIDATA}/events"
 
 
 def front_replace(s, old, new):

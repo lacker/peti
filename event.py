@@ -302,9 +302,9 @@ class Event(object):
 
         # Filter to limit the number of events per coarse channel, as an anti-noise measure
         max_events_per_channel = 50
-        events.sort(lambda e: -e.score())
+        events.sort(key=lambda e: -e.score())
         events = events[:max_events_per_channel]
-        events.sort(lambda e: e.first_column)
+        events.sort(key=lambda e: e.first_column())
         for event in events:
             yield event
 
