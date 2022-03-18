@@ -125,7 +125,7 @@ class HitInfo(object):
         width = self.last_column - self.first_column
         return self.last_column + 2 * width + MARGIN
     
-    def linear_fit(self, alpha=3.5):
+    def linear_fit(self, alpha=3.5, max_columns=1000):
         """
         Do sigma clipping to fit a Gaussian noise model to this data.
         That means we model the data's mean and standard deviation. Then remove all points more than alpha standard
@@ -133,6 +133,8 @@ class HitInfo(object):
         Repeat until this converges.
         We use the hit windows to determine which points are in the initial noise model, so we can only run linear fitting
         on hits where we have the original hit windows.
+        If the data to analyze would be larger than max_columns, we don't do linear fitting and in practice we just
+        conclude it's a noisy region.
 
         This stores extra data on the hit.
         self.fit_data stores the data we are modeling, as a *numpy* array.
@@ -146,6 +148,8 @@ class HitInfo(object):
         self.snr is the strength of the signal, measured in standard deviations above the mean.
         """
         assert self.hit_windows is not None
+        if self.last_column - self.first_column >= max_columns:
+            return
         self.fit_offset = max(self.first_column - MARGIN, 0)
         self.fit_data = cp.asnumpy(self.data.array[:, self.fit_offset : self.last_column + MARGIN + 1])
         
@@ -196,7 +200,7 @@ class HitInfo(object):
         self.snr = (unnormalized_signal - self.mean) / self.std
 
 
-    def can_join(self, other, check_distance=True):
+    def can_join(self, other, check_distance=False):
         """
         Whether self is followed by other closely enough to join them.
         This is ordered, self should come before other.
@@ -210,22 +214,22 @@ class HitInfo(object):
         return self.last_column + MARGIN >= other.first_column
 
 
-    def join(self, other, after_linear_fitting=False):
+    def join(self, other):
         """
-        Join two HitInfo for which can_join is true.
-
-        If after_linear_fitting is set, we are joining two hits late in the process, after we already ran linear fits.
-        This is typically because we categorized two hits as separate, but upon considering the whole cadence, they
-        seem to be the same hit.
-        In this case we have to join the hits even if locally they don't seem very joinable.
+        Join two HitInfo.
+        When we join two hits, any data about their linear fit is lost, because they aren't really a linear fit any more.
         """
-        assert self.can_join(other, check_distance=(not after_linear_fitting))
+        assert self.can_join(other)
         info = HitInfo(self.coarse_channel, self.coarse_channel_size, self.first_column, other.last_column)
-        if after_linear_fitting:
-            # An unappealing hack - a linear fit to one of the two subhits isn't really a good fit any more
-            for field in HitInfo.normal_fields:
-                setattr(info, field, getattr(self, field))
         return info
+
+    
+    def distance(self, other):
+        """
+        Distance from this hit to the next one.
+        """
+        assert self.last_column <= other.first_column
+        return other.first_column - self.last_column
     
     
     def __str__(self):
@@ -239,9 +243,12 @@ def group_hit_windows(hit_windows, coarse_channel, data):
     """
     Return a list of HitInfo objects.
     A hit window is a (row, first_column, last_column) tuple.
+
     When the number of empty columns between two groups is less than margin, they are combined into one hit group.
-    We drop any group with less than three windows.
-    A margin of zero will combine only the hit groups with overlapping columns.
+    To understand margin, the idea is that a margin of zero would combine only the hit groups with overlapping columns.
+
+    Hit groups are also combined to keep the data small in noisy areas, so that we have a certain limit for the number of
+    hit groups per coarse channel.
     """
     # sort by first_column
     sorted_hit_windows = sorted(hit_windows, key=lambda hit: hit[1])
@@ -269,7 +276,22 @@ def group_hit_windows(hit_windows, coarse_channel, data):
         # Turn the last pending group into a full group
         groups.append(HitInfo.from_hit_windows(pending_group, coarse_channel, data))
 
-    return [group for group in groups if len(group.hit_windows) > 2]
+    max_groups = 1000
+    if len(groups) > max_groups:
+        distances = [x.distance(y) for x, y in zip(groups, groups[1:])]
+        distances.sort()
+        # Distances must be over threshold to be included
+        threshold = distances[-max_groups]
+        new_groups = [groups[0]]
+        for new_group in groups[1:]:
+            if new_groups[-1].distance(new_group) <= threshold:
+                new_groups[-1] = new_groups[-1].join(new_group)
+            else:
+                new_groups.append(new_group)
+        assert len(new_groups) <= max_groups        
+        groups = new_groups
+        
+    return groups
     
     
 def diff(list1, list2):

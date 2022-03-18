@@ -116,7 +116,7 @@ class DatFile(object):
         assert self.has_hits()
         answer = []
         for hit in self.hits[coarse_index]:
-            if answer and answer[-1].can_join(hit):
+            if answer and answer[-1].can_join(hit, check_distance=True):
                 answer[-1] = answer[-1].join(hit)
             else:
                 answer.append(hit)
