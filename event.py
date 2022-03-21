@@ -137,7 +137,11 @@ class Event(object):
         for low, high in NOTCH_FILTERS:
             if low <= freq1 <= high and low <= freq2 <= high:
                 return 0
-        
+
+        # If it's too large, we assume it's noise.
+        if self.total_columns() > 300:
+            return 0
+            
         num_on = len(self.on_hits())
         num_off = len(self.off_hits())
         if num_on < 2:
