@@ -11,10 +11,10 @@ else:
     H5_ROOT = "/datax/dibas"
 
 # Standard amount below which to combine hits
-MARGIN = 10
+MARGIN = 20
 
 # Standard image width to display
-DISPLAY_WIDTH = 60
+DISPLAY_WIDTH = 80
 
 # Directory that generated files are placed in
 PETIDATA = os.path.expanduser("~/petidata")
