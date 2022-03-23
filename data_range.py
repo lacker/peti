@@ -2,7 +2,7 @@
 The DataRange represents a part of an underlying H5 file.
 """
 
-import cupy as cp
+import cp
 
 from config import DISPLAY_WIDTH, MARGIN
 
@@ -47,3 +47,6 @@ class DataRange(object):
         display_offset = int(ideal_display_offset)
         region = self.array[:, display_offset : display_offset + display_width]
         return cp.asnumpy(region)
+
+    def filename(self):
+        return self.h5_file.filename()

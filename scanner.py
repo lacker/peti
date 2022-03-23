@@ -4,12 +4,11 @@ A tool to analyze files of shape (16, 1, 67108864) or similarly short-but-very-w
 Reports which columns are "interesting".
 """
 
+import cp
 import os
 import random
 import sys
 import time
-
-import cupy as cp
 
 from h5_file import H5File
 from hit_info import group_hit_windows

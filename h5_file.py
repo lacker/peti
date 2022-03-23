@@ -8,7 +8,8 @@ logging.getLogger("hdf5plugin").setLevel(logging.ERROR)
 import hdf5plugin
 import h5py
 
-import cupy as cp
+from astropy.time import Time
+import cp
 import os
 import random
 
@@ -17,9 +18,10 @@ from data_range import DataRange
 # This directory
 DIR = os.path.dirname(os.path.realpath(__file__))
 
+
 class H5File(object):
     def __init__(self, filename):
-        assert h5py.is_hdf5(filename)
+        assert h5py.is_hdf5(filename), f"{filename} does not appear to be an hdf5 file"
         self.h5file = h5py.File(filename, "r")
         self.data = self.h5file["data"]
         self.height, _, self.width = self.data.shape
@@ -53,10 +55,21 @@ class H5File(object):
         i = begin // self.chunk_size
         chunk = self.get_chunk(i)
         return chunk.get_range(begin - chunk.offset, end - chunk.offset)
-
+ 
     def filename(self):
         return self.h5file.filename
 
+    def timestamp(self):
+        return Time(self.get_attr("tstart"), format="mjd").unix
+
+    def source_name(self):
+        data = self.get_attr("source_name")
+        if type(data) is bytes:
+            return data.decode("utf-8")
+        assert type(data) is str
+        return data
+    
+    
 class ChunkFetcher(object):
     def __init__(self, seed=None):
         if seed is None:

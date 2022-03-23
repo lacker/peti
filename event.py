@@ -56,6 +56,8 @@ EVENT_SCHEMA = {
 
 PARSED_EVENT_SCHEMA = parse_schema(EVENT_SCHEMA)
 
+# This is specific to Green Bank.
+NOTCH_FILTERS = [(1200, 1340), (2300, 2360)]
 
 class Event(object):
     normal_fields = ["h5_filenames", "source_name", "fch1", "foff", "nchans", "tstarts", "coarse_channels"]
@@ -91,16 +93,7 @@ class Event(object):
         # Lazily populated
         self.chunks = None
 
-        # For now, the score is purely defined by how much the hits align with the ABACAD pattern.
-        self.score = 0
-        for i, hit in enumerate(self.hits):
-            if hit is None:
-                continue
-            if i % 2 == 0:
-                self.score += 1
-            else:
-                self.score -= 1
-        
+                
     def first_column(self):
         """
         Relative to the coarse channel.
@@ -113,6 +106,62 @@ class Event(object):
         """
         return max(h.last_column for h in self.hits if h)
 
+    def on_hits(self):
+        return [hit for (i, hit) in enumerate(self.hits) if hit is not None and i % 2 == 0]
+
+    def off_hits(self):
+        return [hit for (i, hit) in enumerate(self.hits) if hit is not None and i % 2 == 1]
+
+    def combined_snr(self):
+        """
+        A heuristic. Average SNR of the on-hits minus max SNR of the off-hits.
+        Hopefully this generally forbids off-hits but makes an exception if they are far smaller.
+        """
+        average_on = sum(hit.snr for hit in self.on_hits()) / 3
+        max_off = max([hit.snr for hit in self.off_hits()] + [0])
+        return average_on - max_off
+
+    
+    def score(self):
+        """
+        The top-level heuristic.
+        Roughly maps to SNR.
+        A positive score indicates a human should look at it.
+        """
+        if self.total_columns() <= 3:
+            # It's a vertical line, no matter how cadencey it is
+            return 0
+
+        # Check for the notch filter
+        freq1, freq2 = self.frequency_range()
+        for low, high in NOTCH_FILTERS:
+            if low <= freq1 <= high and low <= freq2 <= high:
+                return 0
+
+        # If it's too large, we assume it's noise.
+        if self.total_columns() > 300:
+            return 0
+            
+        num_on = len(self.on_hits())
+        num_off = len(self.off_hits())
+        if num_on < 2:
+            return 0
+        if num_off > 1:
+            return 0
+        snr = self.combined_snr()
+        if snr < 2:
+            return 0
+        return snr
+    
+    
+    def total_columns(self):
+        on_hits = self.on_hits()
+        if not on_hits:
+            return 0
+        min_first_column = min(hit.first_column for hit in on_hits)
+        max_last_column = max(hit.last_column for hit in on_hits)
+        return max_last_column - min_first_column + 1
+    
     def session(self):
         """
         Heuristic. Returns None if it can't figure it out.
@@ -141,6 +190,20 @@ class Event(object):
         first_freq = self.fch1 + first_index * self.foff
         last_freq = self.fch1 + last_index * self.foff
         return (first_freq, last_freq)
+
+    def safe_set_chunks(self, chunks):
+        """
+        Sets the chunks if they match.
+        Does nothing if they do not.
+        Returns whether they matched.
+        """
+        for chunk, filename in zip(chunks, self.h5_filenames):
+            if chunk.filename() != filename:
+                return False
+            if chunk.offset != self.offset():
+                return False
+        self.chunks = chunks
+        return True
     
     def populate_chunks(self):
         if self.chunks:
@@ -151,8 +214,13 @@ class Event(object):
             chunk = hit_map.get_chunk(self.coarse_channel)
             self.chunks.append(chunk)
 
-    def depopulate_chunks(self):
+    def detach_chunks(self):
+        """
+        Removes references to the chunks and returns them to the caller.
+        """
+        answer = self.chunks
         self.chunks = None
+        return answer
             
     def start_times(self):
         return [datetime.utcfromtimestamp(Time(tstart, format="mjd").unix) for tstart in self.tstarts]
@@ -167,7 +235,8 @@ class Event(object):
         if last_dt.month == first_dt.month:
             return f"{first_phrase}-{last_dt.day}"
         return f"{first_phrase} - {last_dt.strftime('%b')} {last_dt.day}"
-            
+
+    
     @staticmethod
     def find_events(hit_maps, coarse_channel=None):
         """
@@ -219,20 +288,29 @@ class Event(object):
             return
 
         # Construct events for this coarse channel
+        events = []
         for group in groups:
             hits = [None] * len(hit_maps)
             for (index, hit) in group:
                 if hits[index] is None:
                     hits[index] = hit
                 else:
-                    hits[index] = hits[index].join(hit, check_distance=False)
+                    hits[index] = hits[index].join(hit, after_linear_fitting=True)
 
             # Filter out groups with only one hit
             if len([hit for hit in hits if hit is not None]) <= 1:
                 continue
 
-            print(hits)
-            yield Event(hits, hit_maps=hit_maps)
+            # print(hits)
+            events.append(Event(hits, hit_maps=hit_maps))
+
+        # Filter to limit the number of events per coarse channel, as an anti-noise measure
+        max_events_per_channel = 50
+        events.sort(key=lambda e: -e.score())
+        events = events[:max_events_per_channel]
+        events.sort(key=lambda e: e.first_column())
+        for event in events:
+            yield event
 
 
     @staticmethod
@@ -280,9 +358,17 @@ class Event(object):
     def save_list(events, filename):
         filename = os.path.expanduser(filename)
         assert filename.endswith(".events")
-        plain = [event.to_plain() for event in events]
-        with open(filename, "wb") as outfile:
-            writer(outfile, PARSED_EVENT_SCHEMA, plain)
+        plain = []
+        for event in events:
+            assert type(event) is Event
+            plain.append(event.to_plain())
+        try:
+            with open(filename, "wb") as outfile:
+                writer(outfile, PARSED_EVENT_SCHEMA, plain)
+        except:
+            # Don't leave some half-written file there
+            os.remove(filename)
+            raise
 
     @staticmethod
     def load_list(filename):
