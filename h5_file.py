@@ -23,7 +23,12 @@ class H5File(object):
         self.h5file = h5py.File(filename, "r")
         self.data = self.h5file["data"]
         self.height, _, self.width = self.data.shape
-        self.num_chunks = 64
+        if self.width == 64 * 1048576:
+            self.num_chunks = 64
+        elif self.width == 1048576:
+            self.num_chunks = 1
+        else:
+            raise ValueError(f"unexpected h5 width: {self.width}")
         assert self.width % self.num_chunks == 0
         self.chunk_size = self.width // self.num_chunks
 
