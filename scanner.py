@@ -5,6 +5,7 @@ Reports which columns are "interesting".
 """
 
 import cp
+import json
 import os
 import random
 import sys
@@ -210,7 +211,12 @@ def scan(h5_filename, save=True):
     print(f"found {len(scanner.hitmap.hits)} hits", flush=True)    
     if save:
         scanner.save()
-
+    else:
+        for hit in scanner.hitmap.hits:
+            if hit.first_column > 698000 and hit.last_column < 700000:
+                print(json.dumps(hit.to_plain(), indent=2))
+        good_hits = [hit for hit in scanner.hitmap.hits if hit.is_good()]
+        print(f"found {len(good_hits)} good hits")
     
 if __name__ == "__main__":
     filename = sys.argv[1]

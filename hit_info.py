@@ -230,7 +230,12 @@ class HitInfo(object):
         """
         assert self.last_column <= other.first_column
         return other.first_column - self.last_column
-    
+
+    def is_good(self):
+        """
+        Just a guess.
+        """
+        return self.mse <= 1 and self.area >= 3
     
     def __str__(self):
         return f"hit({self.first_column}, {self.last_column})"
