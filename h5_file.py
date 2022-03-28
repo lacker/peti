@@ -29,8 +29,11 @@ class H5File(object):
             self.num_chunks = 64
         elif self.width == 1048576:
             self.num_chunks = 1
+        elif self.width == 50331648:
+            # ATA
+            self.num_chunks = 192
         else:
-            raise ValueError(f"unexpected h5 width: {self.width}")
+            raise ValueError(f"unexpected data dimensions: {self.height} x {self.width}")
         assert self.width % self.num_chunks == 0
         self.chunk_size = self.width // self.num_chunks
 
